@@ -1,0 +1,118 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum MuscleGroup {
+  chest
+  back
+  legs
+  shoulders
+  arms
+  core
+  full_body
+}
+
+enum ExerciseType {
+  compound
+  isolation
+}
+
+model User {
+  id        String           @id @default(uuid())
+  email     String           @unique
+  name      String
+  createdAt DateTime         @default(now())
+  exercises Exercise[]
+  sessions  WorkoutSession[]
+  routines  Routine[]
+}
+
+/// Ejercicio del usuario con sus reglas de progresión (ver @gym/domain ProgressionScheme).
+model Exercise {
+  id                   String          @id @default(uuid())
+  userId               String
+  user                 User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                 String
+  muscleGroup          MuscleGroup
+  type                 ExerciseType    @default(compound)
+  sets                 Int             @default(3)
+  repMin               Int             @default(8)
+  repMax               Int             @default(12)
+  weightIncrementKg    Float           @default(2.5)
+  deloadFactor         Float           @default(0.9)
+  failuresBeforeDeload Int             @default(2)
+  startingWeightKg     Float           @default(20)
+  createdAt            DateTime        @default(now())
+  entries              ExerciseEntry[]
+  routines             RoutineExercise[]
+
+  @@unique([userId, name])
+}
+
+/// Plantilla de una sesión (ej. "Empuje", "Pierna"): qué ejercicios se hacen y en qué orden.
+model Routine {
+  id        String            @id @default(uuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime          @default(now())
+  exercises RoutineExercise[]
+  sessions  WorkoutSession[]
+
+  @@unique([userId, name])
+}
+
+model RoutineExercise {
+  routineId  String
+  routine    Routine  @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  exerciseId String
+  exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  position   Int
+
+  @@id([routineId, exerciseId])
+}
+
+model WorkoutSession {
+  id          String          @id @default(uuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Rutina de la que salió la sesión, si salió de una (para comparar con la última vez).
+  routineId   String?
+  routine     Routine?        @relation(fields: [routineId], references: [id], onDelete: SetNull)
+  performedAt DateTime        @default(now())
+  notes       String?
+  entries     ExerciseEntry[]
+
+  @@index([userId, performedAt])
+  @@index([routineId, performedAt])
+}
+
+/// Un ejercicio dentro de una sesión.
+model ExerciseEntry {
+  id         String         @id @default(uuid())
+  sessionId  String
+  session    WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exerciseId String
+  exercise   Exercise       @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  position   Int
+  sets       SetEntry[]
+
+  @@index([exerciseId])
+}
+
+model SetEntry {
+  id       String        @id @default(uuid())
+  entryId  String
+  entry    ExerciseEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  position Int
+  weightKg Float
+  reps     Int
+  rpe      Float?
+  warmup   Boolean       @default(false)
+}

@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+*.log
+coverage/
+.expo/
+web-build/
+apps/api/src/generated/

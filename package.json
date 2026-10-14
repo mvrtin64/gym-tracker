@@ -1,0 +1,14 @@
+{
+  "name": "gym-tracker",
+  "private": true,
+  "packageManager": "pnpm@10.14.0",
+  "scripts": {
+    "build:domain": "pnpm --filter @gym/domain build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down",
+    "api": "pnpm --filter @gym/api dev",
+    "mobile": "pnpm --filter @gym/mobile start"
+  }
+}
