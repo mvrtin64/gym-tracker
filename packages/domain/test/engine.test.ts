@@ -32,6 +32,16 @@ describe('computeNextTarget', () => {
     expect(t).toMatchObject({ decision: 'increase_weight', weightKg: 42.5, reps: 8 });
   });
 
+  it('sube el peso si supera el máximo en todas las series', () => {
+    const t = computeNextTarget(scheme, [session(40, [14, 13, 12])]);
+    expect(t).toMatchObject({ decision: 'increase_weight', weightKg: 42.5, reps: 8 });
+  });
+
+  it('no sube el peso si una sola serie queda bajo el máximo', () => {
+    const t = computeNextTarget(scheme, [session(40, [13, 12, 11])]);
+    expect(t).toMatchObject({ decision: 'increase_reps', weightKg: 40, reps: 12 });
+  });
+
   it('busca una rep más cuando está dentro del rango', () => {
     const t = computeNextTarget(scheme, [session(40, [10, 9, 9])]);
     expect(t).toMatchObject({ decision: 'increase_reps', weightKg: 40, reps: 10 });
