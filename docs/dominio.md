@@ -223,7 +223,25 @@ progresó / igual / retrocedió, serie por serie. Manda el peso máximo; con el 
 
 ---
 
-## 7. Pendientes ❓
+## 7. Decisiones de implementación a validar
+
+Detalles que las reglas no fijaban y se resolvieron en `packages/domain`. Son fáciles de cambiar.
+
+| Tema | Decisión | Dónde |
+|---|---|---|
+| RIR de cada sensación | Se toma el valor bajo del rango: 0 · 1 · 3 · 5 (no sobreestimar el esfuerzo) | `feedback/rir.ts` |
+| Estado de un músculo en la sesión | Progresó si mejoró en algún ejercicio y no retrocedió en ninguno; mezcla de mejora y retroceso = se mantuvo | `volume/adjustment.ts` |
+| Cuánto bajar | −1 serie si se mantuvo 2 sesiones; −2 si en alguna retrocedió | `volume/adjustment.ts` |
+| Estancado con RIR alto | No se baja volumen: primero se exige apretar más | `volume/adjustment.ts` |
+| Descarga general | Además del 3 de cada 4, hacen falta al menos 4 grupos evaluados (con 2+ sesiones en la ventana) | `volume/adjustment.ts` |
+| Mitad de series | Se redondea hacia arriba (7 → 4) | `volume/adjustment.ts` |
+| Vuelta de la descarga | +2 series por semana por grupo | `volume/adjustment.ts` |
+| Tipo de día | 1–2 días, o 3 sin prioridad: full body. Si no, alterna inferior/superior empezando por el tren priorizado (sin prioridad, por inferior) | `planning/planner.ts` |
+| Abdominales | Van con el tren inferior | `training/muscles.ts` |
+| Músculos chicos | Frecuencia 2 como el resto; la 3 queda para los priorizados | `planning/planner.ts` |
+| Series por ejercicio | 4 = 2 + 2; 7 = 3 + 2 + 2 | `planning/planner.ts` |
+
+## 8. Pendientes ❓
 
 - **Reparto por días**: el algoritmo concreto que asigna músculos a cada día según días disponibles
   y prioridad (tren superior / inferior). Se propone en código y se valida con el coach.
