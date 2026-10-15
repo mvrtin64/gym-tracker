@@ -1,5 +1,6 @@
 /** Modelos de negocio compartidos por la API y la app. Sin dependencias de framework. */
 
+/** @deprecated Modelo viejo de 7 grupos; se reemplaza por `MUSCLES` (training/muscles) al migrar la API. */
 export const MUSCLE_GROUPS = ['chest', 'back', 'legs', 'shoulders', 'arms', 'core', 'full_body'] as const;
 export type MuscleGroup = (typeof MUSCLE_GROUPS)[number];
 
@@ -46,6 +47,8 @@ export interface SetLog {
   reps: number;
   /** Esfuerzo percibido (1-10), opcional. */
   rpe?: number;
+  /** Repeticiones en reserva estimadas (ver feedback/rir). */
+  rir?: number;
   warmup?: boolean;
 }
 
