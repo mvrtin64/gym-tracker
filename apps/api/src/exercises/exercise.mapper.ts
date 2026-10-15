@@ -1,35 +1,45 @@
 import { SCHEME_PRESETS, type ExerciseType, type ProgressionScheme } from '@gym/domain';
-import type { Exercise } from '../generated/prisma/client';
+import type { RoutineExercise, UserExercise } from '../generated/prisma/client';
 
-type SchemeFields = Pick<
-  Exercise,
-  'sets' | 'repMin' | 'repMax' | 'weightIncrementKg' | 'deloadFactor' | 'failuresBeforeDeload' | 'startingWeightKg'
+/** El catálogo global más los ejercicios propios del usuario. */
+export const visibleTo = (userId: string) => ({ OR: [{ ownerId: null }, { ownerId: userId }] });
+
+export type ExerciseSettings = Pick<
+  UserExercise,
+  'note' | 'weightIncrementKg' | 'startingWeightKg' | 'deloadFactor' | 'failuresBeforeDeload'
 >;
 
-/** Mismos valores por defecto que el schema de Prisma. */
-export const SCHEME_DEFAULTS: SchemeFields = {
-  sets: 3,
-  repMin: 8,
-  repMax: 12,
-  weightIncrementKg: 2.5,
-  deloadFactor: 0.9,
-  failuresBeforeDeload: 2,
-  startingWeightKg: 20,
-};
-
-/** Defaults de un ejercicio nuevo según su tipo (multiarticular: pocas reps; monoarticular: más). */
-export function defaultsFor(type: ExerciseType): SchemeFields {
-  const p = SCHEME_PRESETS[type];
-  return { ...SCHEME_DEFAULTS, sets: p.sets, repMin: p.repRange.min, repMax: p.repRange.max, weightIncrementKg: p.weightIncrementKg };
+/** Valores de un ejercicio que el usuario todavía no configuró: el incremento depende del tipo. */
+export function defaultSettings(type: ExerciseType): ExerciseSettings {
+  return {
+    note: null,
+    weightIncrementKg: SCHEME_PRESETS[type].weightIncrementKg,
+    startingWeightKg: 20,
+    deloadFactor: 0.9,
+    failuresBeforeDeload: 2,
+  };
 }
 
-export function toProgressionScheme(e: SchemeFields): ProgressionScheme {
+export function pickSettings({ note, weightIncrementKg, startingWeightKg, deloadFactor, failuresBeforeDeload }: ExerciseSettings): ExerciseSettings {
+  return { note, weightIncrementKg, startingWeightKg, deloadFactor, failuresBeforeDeload };
+}
+
+export type Prescription = Pick<RoutineExercise, 'sets' | 'repMin' | 'repMax'>;
+
+/** Prescripción por defecto al agregar un ejercicio a una rutina (multiarticular: pocas reps; monoarticular: más). */
+export function defaultPrescription(type: ExerciseType): Prescription {
+  const p = SCHEME_PRESETS[type];
+  return { sets: p.sets, repMin: p.repRange.min, repMax: p.repRange.max };
+}
+
+/** La prescripción sale de la rutina; el incremento y la descarga, de lo que configuró el usuario. */
+export function toProgressionScheme(prescription: Prescription, settings: ExerciseSettings): ProgressionScheme {
   return {
-    sets: e.sets,
-    repRange: { min: e.repMin, max: e.repMax },
-    weightIncrementKg: e.weightIncrementKg,
-    deloadFactor: e.deloadFactor,
-    failuresBeforeDeload: e.failuresBeforeDeload,
-    startingWeightKg: e.startingWeightKg,
+    sets: prescription.sets,
+    repRange: { min: prescription.repMin, max: prescription.repMax },
+    weightIncrementKg: settings.weightIncrementKg,
+    deloadFactor: settings.deloadFactor,
+    failuresBeforeDeload: settings.failuresBeforeDeload,
+    startingWeightKg: settings.startingWeightKg,
   };
 }

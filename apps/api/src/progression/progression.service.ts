@@ -1,6 +1,6 @@
 import { computeNextTarget, type NextTarget } from '@gym/domain';
 import { Injectable } from '@nestjs/common';
-import { toProgressionScheme } from '../exercises/exercise.mapper';
+import { toProgressionScheme, type ExerciseSettings, type Prescription } from '../exercises/exercise.mapper';
 import { ExercisesService } from '../exercises/exercises.service';
 
 /** Cuántas sesiones mira el motor (alcanza para detectar rachas de fallos). */
@@ -10,9 +10,14 @@ const HISTORY_WINDOW = 10;
 export class ProgressionService {
   constructor(private readonly exercises: ExercisesService) {}
 
-  async nextTarget(userId: string, exerciseId: string): Promise<NextTarget> {
-    const exercise = await this.exercises.get(userId, exerciseId);
+  /** Objetivo de la próxima sesión, con la prescripción de la rutina y la configuración del usuario. */
+  async nextTarget(
+    userId: string,
+    exerciseId: string,
+    prescription: Prescription,
+    settings: ExerciseSettings,
+  ): Promise<NextTarget> {
     const history = await this.exercises.history(userId, exerciseId, HISTORY_WINDOW);
-    return computeNextTarget(toProgressionScheme(exercise), history);
+    return computeNextTarget(toProgressionScheme(prescription, settings), history);
   }
 }

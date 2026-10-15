@@ -8,14 +8,22 @@ datasource db {
   provider = "postgresql"
 }
 
-enum MuscleGroup {
+// Modelo descrito en docs/modelo-datos.md. Los valores de los enums son los de @gym/domain.
+
+enum Muscle {
+  front_delt
+  side_delt
+  rear_delt
   chest
-  back
-  legs
-  shoulders
-  arms
-  core
-  full_body
+  upper_back
+  lats
+  biceps
+  triceps
+  abs
+  quads
+  hamstrings
+  glutes
+  calves
 }
 
 enum ExerciseType {
@@ -23,57 +31,169 @@ enum ExerciseType {
   isolation
 }
 
+enum Level {
+  beginner
+  intermediate
+  advanced
+}
+
+enum Focus {
+  general
+  lower
+  upper
+  specific
+}
+
+enum Weekday {
+  mon
+  tue
+  wed
+  thu
+  fri
+  sat
+  sun
+}
+
+/// Sensación de la serie del principiante (se traduce a RIR en @gym/domain).
+enum Feel {
+  failure
+  one_two_left
+  several_left
+  very_easy
+}
+
+enum RoutineOrigin {
+  manual
+  generated
+}
+
+/// suggest: la app solo sugiere. auto: la app aplica los ajustes sola.
+enum AdjustMode {
+  suggest
+  auto
+}
+
+enum VolumeChangeStatus {
+  suggested
+  applied
+  dismissed
+}
+
 model User {
-  id        String           @id @default(uuid())
-  email     String           @unique
-  name      String
-  createdAt DateTime         @default(now())
-  exercises Exercise[]
-  sessions  WorkoutSession[]
-  routines  Routine[]
+  id            String           @id @default(uuid())
+  email         String           @unique
+  name          String
+  createdAt     DateTime         @default(now())
+  profile       TrainingProfile?
+  volumes       MuscleVolume[]
+  volumeChanges VolumeChange[]
+  ownExercises  Exercise[]
+  exercises     UserExercise[]
+  routines      Routine[]
+  sessions      WorkoutSession[]
 }
 
-/// Ejercicio del usuario con sus reglas de progresión (ver @gym/domain ProgressionScheme).
-model Exercise {
-  id                   String          @id @default(uuid())
-  userId               String
-  user                 User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name                 String
-  muscleGroup          MuscleGroup
-  type                 ExerciseType    @default(compound)
-  sets                 Int             @default(3)
-  repMin               Int             @default(8)
-  repMax               Int             @default(12)
-  weightIncrementKg    Float           @default(2.5)
-  deloadFactor         Float           @default(0.9)
-  failuresBeforeDeload Int             @default(2)
-  startingWeightKg     Float           @default(20)
-  createdAt            DateTime        @default(now())
-  entries              ExerciseEntry[]
-  routines             RoutineExercise[]
-
-  @@unique([userId, name])
+/// Lo que se pregunta en el onboarding (docs/dominio.md §2).
+model TrainingProfile {
+  userId          String    @id
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  level           Level
+  trainingDays    Weekday[]
+  focus           Focus     @default(general)
+  priorityMuscles Muscle[]
+  preferredRepMin Int?
+  preferredRepMax Int?
+  updatedAt       DateTime  @updatedAt
 }
 
-/// Plantilla de una sesión (ej. "Empuje", "Pierna"): qué ejercicios se hacen y en qué orden.
-model Routine {
-  id        String            @id @default(uuid())
+/// Objetivo actual de series semanales por músculo.
+model MuscleVolume {
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  muscle     Muscle
+  weeklySets Int
+  updatedAt  DateTime @updatedAt
+
+  @@id([userId, muscle])
+}
+
+/// Historial de cambios de volumen: explica por qué cambió y guarda las sugerencias pendientes.
+model VolumeChange {
+  id        String             @id @default(uuid())
   userId    String
-  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name      String
-  createdAt DateTime          @default(now())
-  exercises RoutineExercise[]
-  sessions  WorkoutSession[]
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  muscle    Muscle
+  delta     Int
+  reason    String
+  status    VolumeChangeStatus
+  createdAt DateTime           @default(now())
+
+  @@index([userId, createdAt])
+}
+
+/// Catálogo global de ejercicios. Con ownerId es un ejercicio propio, visible solo para su dueño.
+model Exercise {
+  id            String            @id @default(uuid())
+  name          String
+  type          ExerciseType
+  /// Músculos a los que puede contar según el enfoque (ej. búlgara: glúteo o cuádriceps).
+  targetMuscles Muscle[]
+  defaultTarget Muscle
+  /// GIF o link de YouTube.
+  demoUrl       String?
+  coachTip      String?
+  ownerId       String?
+  owner         User?             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt     DateTime          @default(now())
+  userData      UserExercise[]
+  routines      RoutineExercise[]
+  entries       ExerciseEntry[]
+
+  @@unique([ownerId, name])
+}
+
+/// Lo del usuario sobre un ejercicio: anotación (ej. "banco a 30°") y reglas de progresión.
+model UserExercise {
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exerciseId           String
+  exercise             Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  note                 String?
+  weightIncrementKg    Float
+  startingWeightKg     Float
+  deloadFactor         Float    @default(0.9)
+  failuresBeforeDeload Int      @default(2)
+
+  @@id([userId, exerciseId])
+}
+
+/// Plantilla de una sesión. Propia o generada, es el mismo objeto (docs/dominio.md §3.1).
+model Routine {
+  id         String            @id @default(uuid())
+  userId     String
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  origin     RoutineOrigin     @default(manual)
+  adjustMode AdjustMode        @default(suggest)
+  weekday    Weekday?
+  createdAt  DateTime          @default(now())
+  exercises  RoutineExercise[]
+  sessions   WorkoutSession[]
 
   @@unique([userId, name])
 }
 
+/// La prescripción vive acá: el mismo ejercicio puede ir con otro enfoque o rango en otra rutina.
 model RoutineExercise {
-  routineId  String
-  routine    Routine  @relation(fields: [routineId], references: [id], onDelete: Cascade)
-  exerciseId String
-  exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
-  position   Int
+  routineId    String
+  routine      Routine  @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  exerciseId   String
+  exercise     Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  position     Int
+  targetMuscle Muscle
+  sets         Int
+  repMin       Int
+  repMax       Int
 
   @@id([routineId, exerciseId])
 }
@@ -86,6 +206,7 @@ model WorkoutSession {
   routineId   String?
   routine     Routine?        @relation(fields: [routineId], references: [id], onDelete: SetNull)
   performedAt DateTime        @default(now())
+  isDeload    Boolean         @default(false)
   notes       String?
   entries     ExerciseEntry[]
 
@@ -93,19 +214,21 @@ model WorkoutSession {
   @@index([routineId, performedAt])
 }
 
-/// Un ejercicio dentro de una sesión.
+/// Un ejercicio dentro de una sesión. targetMuscle se copia al anotar: el historial no cambia si cambia la rutina.
 model ExerciseEntry {
-  id         String         @id @default(uuid())
-  sessionId  String
-  session    WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  exerciseId String
-  exercise   Exercise       @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
-  position   Int
-  sets       SetEntry[]
+  id           String         @id @default(uuid())
+  sessionId    String
+  session      WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exerciseId   String
+  exercise     Exercise       @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  position     Int
+  targetMuscle Muscle
+  sets         SetEntry[]
 
   @@index([exerciseId])
 }
 
+/// Se guarda lo que respondió el usuario (feel o rpe) y el RIR calculado.
 model SetEntry {
   id       String        @id @default(uuid())
   entryId  String
@@ -113,6 +236,8 @@ model SetEntry {
   position Int
   weightKg Float
   reps     Int
-  rpe      Float?
   warmup   Boolean       @default(false)
+  feel     Feel?
+  rpe      Float?
+  rir      Float?
 }
