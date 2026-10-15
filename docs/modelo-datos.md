@@ -1,6 +1,6 @@
 # Modelo de datos
 
-Cómo se guardan las reglas de [`dominio.md`](dominio.md). Estado: **propuesto**, falta implementar.
+Cómo se guardan las reglas de [`dominio.md`](dominio.md). Estado: **implementado en la API** (`apps/api/prisma/schema.prisma`).
 
 ```mermaid
 erDiagram

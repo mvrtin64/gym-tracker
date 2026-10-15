@@ -89,7 +89,7 @@ pnpm db:up                                   # PostgreSQL en Docker
 cp apps/api/.env.example apps/api/.env
 pnpm --filter @gym/api exec prisma migrate dev
 pnpm --filter @gym/api db:generate
-pnpm --filter @gym/api db:seed               # usuario demo, ejercicios, 2 rutinas y una sesión pasada
+pnpm --filter @gym/api db:seed               # catálogo de ejercicios, usuario demo con perfil, 2 rutinas y una sesión pasada
 pnpm api                                     # http://localhost:3000
 pnpm mobile                                  # escaneá el QR con Expo Go
 ```
@@ -105,16 +105,21 @@ pnpm typecheck   # todos los paquetes
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| GET | `/exercises` | Ejercicios del usuario |
-| POST | `/exercises` | Crea un ejercicio (valida las reglas con el dominio) |
-| GET | `/exercises/:id` | Detalle |
+| GET | `/profile` | Perfil de entrenamiento (respuestas del onboarding) |
+| PUT | `/profile` | Guarda el onboarding; la primera vez fija el **volumen inicial** por músculo |
+| GET | `/volume` | Series semanales objetivo vs. hechas esta semana, por músculo, y sugerencias pendientes |
+| PUT | `/volume/:muscle` | Cambio manual del objetivo semanal (queda en el historial) |
+| GET | `/plan` | **Vista previa de la semana**: músculos y series de cada día |
+| GET | `/exercises` | Catálogo global + ejercicios propios, con la configuración del usuario |
+| POST | `/exercises` | Crea un ejercicio propio (tipo, músculos posibles, enfoque por defecto) |
+| GET | `/exercises/:id` | Detalle (incluye demo y tip del coach) |
+| PUT | `/exercises/:id/settings` | Anotación del usuario (ej. *"banco a 30°"*) e incremento de peso |
 | GET | `/exercises/:id/history` | Sesiones anteriores con sus series |
-| GET | `/exercises/:id/next-target` | **Objetivo de la próxima sesión** |
 | GET | `/sessions` | Últimas sesiones |
-| POST | `/sessions` | Registra una sesión con uno o más ejercicios (opcional `routineId`) |
-| GET | `/routines` | Rutinas con sus ejercicios y la fecha de la última vez |
-| POST | `/routines` | Crea una rutina (`name`, `exerciseIds` en orden) |
-| GET | `/routines/:id/workout` | **Entrenamiento del día**: objetivo + última vez por ejercicio |
+| POST | `/sessions` | Registra una sesión; cada serie con sensación o RPE → RIR calculado |
+| GET | `/routines` | Rutinas con su prescripción y la fecha de la última vez |
+| POST | `/routines` | Crea una rutina: ejercicios en orden, enfoque, series y rango |
+| GET | `/routines/:id/workout` | **Entrenamiento del día**: objetivo, anotación y última vez por ejercicio |
 
 ## Roadmap
 

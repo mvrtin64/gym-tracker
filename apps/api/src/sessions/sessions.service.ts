@@ -1,4 +1,6 @@
+import { rirFromFeedback, type Muscle } from '@gym/domain';
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { visibleTo } from '../exercises/exercise.mapper';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSessionDto } from './dto/create-session.dto';
 
@@ -19,11 +21,34 @@ export class SessionsService {
 
   async create(userId: string, dto: CreateSessionDto) {
     const ids = [...new Set(dto.entries.map((e) => e.exerciseId))];
-    const owned = await this.prisma.exercise.count({ where: { userId, id: { in: ids } } });
-    if (owned !== ids.length) throw new BadRequestException('Algún ejercicio no existe');
-    if (dto.routineId && !(await this.prisma.routine.count({ where: { id: dto.routineId, userId } }))) {
-      throw new BadRequestException('La rutina no existe');
+    const exercises = await this.prisma.exercise.findMany({ where: { id: { in: ids }, ...visibleTo(userId) } });
+    if (exercises.length !== ids.length) throw new BadRequestException('Algún ejercicio no existe');
+    const byId = new Map(exercises.map((e) => [e.id, e]));
+
+    // El músculo objetivo de cada ejercicio en la rutina, para copiarlo en lo anotado.
+    let routineTargets = new Map<string, Muscle>();
+    if (dto.routineId) {
+      const routine = await this.prisma.routine.findFirst({ where: { id: dto.routineId, userId }, include: { exercises: true } });
+      if (!routine) throw new BadRequestException('La rutina no existe');
+      routineTargets = new Map(routine.exercises.map((e) => [e.exerciseId, e.targetMuscle]));
     }
+
+    const entries = dto.entries.map((entry, i) => {
+      const exercise = byId.get(entry.exerciseId)!;
+      const targetMuscle = entry.targetMuscle ?? routineTargets.get(exercise.id) ?? exercise.defaultTarget;
+      if (!exercise.targetMuscles.includes(targetMuscle)) {
+        throw new BadRequestException(`"${exercise.name}" no puede contar para ${targetMuscle}`);
+      }
+      return {
+        exerciseId: exercise.id,
+        position: i,
+        targetMuscle,
+        sets: {
+          // Se guarda lo que respondió el usuario y el RIR estimado por el dominio.
+          create: entry.sets.map((s, j) => ({ ...s, rir: rirFromFeedback(s), position: j })),
+        },
+      };
+    });
 
     return this.prisma.workoutSession.create({
       data: {
@@ -31,13 +56,8 @@ export class SessionsService {
         performedAt: dto.performedAt ? new Date(dto.performedAt) : undefined,
         notes: dto.notes,
         routineId: dto.routineId,
-        entries: {
-          create: dto.entries.map((entry, i) => ({
-            exerciseId: entry.exerciseId,
-            position: i,
-            sets: { create: entry.sets.map((s, j) => ({ ...s, position: j })) },
-          })),
-        },
+        isDeload: dto.isDeload,
+        entries: { create: entries },
       },
       include: withSets,
     });

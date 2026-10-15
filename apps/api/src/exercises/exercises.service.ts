@@ -1,50 +1,79 @@
-import { validateScheme } from '@gym/domain';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '../generated/prisma/client';
+import { definedOnly } from '../common/objects';
+import { toSetLog } from '../common/set-log';
+import { Prisma, type Exercise, type UserExercise } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateExerciseDto } from './dto/create-exercise.dto';
-import { defaultsFor, toProgressionScheme } from './exercise.mapper';
+import { UpdateExerciseSettingsDto } from './dto/update-exercise-settings.dto';
+import { defaultSettings, pickSettings, visibleTo } from './exercise.mapper';
+
+const withUserData = (userId: string) => ({ userData: { where: { userId } } });
+
+/** Ejercicio del catálogo con lo que el usuario configuró (o los valores por defecto). */
+function withSettings({ userData, ...exercise }: Exercise & { userData: UserExercise[] }) {
+  return {
+    ...exercise,
+    isOwn: exercise.ownerId !== null,
+    settings: userData[0] ? pickSettings(userData[0]) : defaultSettings(exercise.type),
+  };
+}
 
 @Injectable()
 export class ExercisesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  list(userId: string) {
-    return this.prisma.exercise.findMany({ where: { userId }, orderBy: { name: 'asc' } });
+  async list(userId: string) {
+    const rows = await this.prisma.exercise.findMany({
+      where: visibleTo(userId),
+      orderBy: { name: 'asc' },
+      include: withUserData(userId),
+    });
+    return rows.map(withSettings);
   }
 
   async get(userId: string, id: string) {
-    const exercise = await this.prisma.exercise.findFirst({ where: { id, userId } });
-    if (!exercise) throw new NotFoundException('Ejercicio no encontrado');
-    return exercise;
+    const row = await this.prisma.exercise.findFirst({ where: { id, ...visibleTo(userId) }, include: withUserData(userId) });
+    if (!row) throw new NotFoundException('Ejercicio no encontrado');
+    return withSettings(row);
   }
 
   async create(userId: string, dto: CreateExerciseDto) {
-    const type = dto.type ?? 'compound';
-    // Los campos opcionales no enviados llegan como undefined: no deben pisar los defaults del tipo.
-    const sent = Object.fromEntries(Object.entries(dto).filter(([, v]) => v !== undefined));
-    const data = { ...defaultsFor(type), ...sent, name: dto.name, muscleGroup: dto.muscleGroup, type };
-    try {
-      // Las reglas de negocio viven en el dominio: se validan antes de persistir.
-      validateScheme(toProgressionScheme(data));
-    } catch (e) {
-      throw new BadRequestException((e as Error).message);
+    const defaultTarget = dto.defaultTarget ?? dto.targetMuscles[0];
+    if (!dto.targetMuscles.includes(defaultTarget)) {
+      throw new BadRequestException('El enfoque por defecto tiene que estar entre los músculos del ejercicio');
     }
     try {
-      return await this.prisma.exercise.create({ data: { ...data, userId } });
+      const row = await this.prisma.exercise.create({
+        data: { ...dto, name: dto.name.trim(), defaultTarget, ownerId: userId },
+        include: withUserData(userId),
+      });
+      return withSettings(row);
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-        throw new ConflictException(`Ya existe un ejercicio llamado "${dto.name}"`);
+        throw new ConflictException(`Ya tenés un ejercicio llamado "${dto.name}"`);
       }
       throw e;
     }
   }
 
-  /** Últimas sesiones de un ejercicio con sus series, de la más reciente a la más vieja. */
+  /** Anotación y reglas de progresión del usuario para un ejercicio. */
+  async updateSettings(userId: string, id: string, dto: UpdateExerciseSettingsDto) {
+    const exercise = await this.get(userId, id);
+    const sent = definedOnly(dto);
+    const data = { ...sent, ...(sent.note !== undefined && { note: sent.note.trim() || null }) };
+    const row = await this.prisma.userExercise.upsert({
+      where: { userId_exerciseId: { userId, exerciseId: id } },
+      create: { ...defaultSettings(exercise.type), ...data, userId, exerciseId: id },
+      update: data,
+    });
+    return pickSettings(row);
+  }
+
+  /** Últimas sesiones del usuario con este ejercicio, de la más reciente a la más vieja. */
   async history(userId: string, id: string, take = 20) {
     await this.get(userId, id);
     const entries = await this.prisma.exerciseEntry.findMany({
-      where: { exerciseId: id },
+      where: { exerciseId: id, session: { userId } },
       include: { session: true, sets: { orderBy: { position: 'asc' } } },
       orderBy: { session: { performedAt: 'desc' } },
       take,
@@ -52,7 +81,8 @@ export class ExercisesService {
     return entries.map((e) => ({
       sessionId: e.sessionId,
       performedAt: e.session.performedAt,
-      sets: e.sets.map(({ weightKg, reps, rpe, warmup }) => ({ weightKg, reps, rpe: rpe ?? undefined, warmup })),
+      targetMuscle: e.targetMuscle,
+      sets: e.sets.map(toSetLog),
     }));
   }
 }
