@@ -37,6 +37,8 @@ mostrar el 1RM estimado y el volumen.
 
 ## Sobrecarga progresiva (doble progresión)
 
+> Todas las reglas de entrenamiento (onboarding, volumen semanal, feedback por serie) están en [`docs/dominio.md`](docs/dominio.md); cómo se guardan, en [`docs/modelo-datos.md`](docs/modelo-datos.md).
+
 Cada ejercicio tiene series, un rango de repeticiones (ej. 8–12), un incremento de peso y una regla de descarga.
 `computeNextTarget()` mira el historial y decide:
 
