@@ -16,6 +16,9 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: colors.bg },
         }}>
         <Stack.Screen name="index" options={{ title: 'Gym Tracker' }} />
+        <Stack.Screen name="onboarding" options={{ title: 'Tu perfil' }} />
+        <Stack.Screen name="plan" options={{ title: 'Tu semana' }} />
+        <Stack.Screen name="exercises" options={{ title: 'Ejercicios' }} />
         <Stack.Screen name="routine/[id]" options={{ title: '' }} />
         <Stack.Screen name="exercise/[id]" options={{ title: '' }} />
         <Stack.Screen name="new-routine" options={{ title: 'Nueva rutina', presentation: 'modal' }} />

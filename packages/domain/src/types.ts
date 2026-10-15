@@ -1,9 +1,5 @@
 /** Modelos de negocio compartidos por la API y la app. Sin dependencias de framework. */
 
-/** @deprecated Modelo viejo de 7 grupos; se reemplaza por `MUSCLES` (training/muscles) al migrar la API. */
-export const MUSCLE_GROUPS = ['chest', 'back', 'legs', 'shoulders', 'arms', 'core', 'full_body'] as const;
-export type MuscleGroup = (typeof MUSCLE_GROUPS)[number];
-
 /**
  * Multiarticular (sentadilla, press banca, remo…): más demandante a nivel articular y cardiovascular,
  * se trabaja con pocas repeticiones. Monoarticular (curl, extensiones, elevaciones…): más repeticiones.
@@ -32,14 +28,6 @@ export interface ProgressionScheme {
   failuresBeforeDeload: number;
   /** Peso para la primera sesión, si no hay historial. */
   startingWeightKg: number;
-}
-
-export interface Exercise {
-  id: string;
-  name: string;
-  muscleGroup: MuscleGroup;
-  type: ExerciseType;
-  progression: ProgressionScheme;
 }
 
 export interface SetLog {

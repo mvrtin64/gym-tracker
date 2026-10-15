@@ -1,15 +1,21 @@
-import { comparePerformance, compareSet, workingSets, type NextTarget, type PerformanceComparison, type SetLog } from '@gym/domain';
+import {
+  comparePerformance, compareSet, effortCue, FEELS, rirFromFeedback, workingSets,
+  type Feel, type NextTarget, type PerformanceComparison, type SetLog,
+} from '@gym/domain';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { useLogSession, useWorkout } from '../../api/hooks';
-import type { WorkoutDto } from '../../api/types';
-import { Button, Card, QueryState, styles } from '../../components/ui';
-import { colors, COMPARISON_UI, DECISION_UI, spacing, TYPE_LABELS } from '../../theme';
+import { Alert, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useLogSession, useProfile, useWorkout } from '../../api/hooks';
+import type { NewSet, WorkoutDto } from '../../api/types';
+import { Button, Card, Chips, QueryState, styles } from '../../components/ui';
+import { colors, COMPARISON_UI, DECISION_UI, FEEL_LABELS, MUSCLE_LABELS, spacing } from '../../theme';
 
 interface Row {
   weight: string;
   reps: string;
+  /** Feedback de la serie: sensación (principiante) o RPE (intermedio/avanzado). */
+  feel: Feel | null;
+  rpe: string;
 }
 type WorkoutItem = WorkoutDto['exercises'][number];
 interface Result {
@@ -17,16 +23,23 @@ interface Result {
   comparison: PerformanceComparison;
 }
 
+const FEEL_SHORT = Object.fromEntries(FEELS.map((f) => [f, FEEL_LABELS[f].short])) as Record<Feel, string>;
+
 const toNumber = (s: string) => Number(s.replace(',', '.'));
 const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 const rowsFrom = (t: NextTarget): Row[] =>
-  Array.from({ length: t.sets }, () => ({ weight: String(t.weightKg), reps: String(t.reps) }));
+  Array.from({ length: t.sets }, () => ({ weight: String(t.weightKg), reps: String(t.reps), feel: null, rpe: '' }));
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 
+function parseRpe(s: string): number | undefined {
+  const n = toNumber(s);
+  return s.trim() !== '' && n >= 1 && n <= 10 ? n : undefined;
+}
+
 /** Las filas completas y válidas como series; las vacías o inválidas se ignoran. */
-function parseRows(rows: Row[]): SetLog[] {
+function parseRows(rows: Row[]): NewSet[] {
   return rows
-    .map((r) => ({ weightKg: toNumber(r.weight), reps: toNumber(r.reps) }))
+    .map((r) => ({ weightKg: toNumber(r.weight), reps: toNumber(r.reps), feel: r.feel ?? undefined, rpe: parseRpe(r.rpe) }))
     .filter((s) => Number.isFinite(s.weightKg) && s.weightKg >= 0 && Number.isInteger(s.reps) && s.reps > 0);
 }
 
@@ -34,10 +47,12 @@ function parseRows(rows: Row[]): SetLog[] {
 export default function WorkoutScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const workout = useWorkout(id);
+  const profile = useProfile();
   const logSession = useLogSession();
   const [rows, setRows] = useState<Record<string, Row[]>>({});
   // Se congela al guardar: después la API ya devuelve la sesión de hoy como "última vez".
   const [results, setResults] = useState<Result[] | null>(null);
+  const beginner = profile.data?.level === 'beginner';
 
   useEffect(() => {
     if (workout.data) {
@@ -81,11 +96,15 @@ export default function WorkoutScreen() {
               {data.lastPerformedAt
                 ? `Comparando con la última vez que hiciste ${data.name}: ${shortDate(data.lastPerformedAt)}.`
                 : `Primera vez con ${data.name}: hoy queda como referencia para la próxima.`}
+              {beginner
+                ? ' Después de cada serie marcá cómo la sentiste.'
+                : ' Anotá el RPE de cada serie (10 = no podías hacer otra).'}
             </Text>
             {data.exercises.map((x) => (
               <ExerciseBlock
                 key={x.exercise.id}
                 item={x}
+                beginner={beginner}
                 rows={rows[x.exercise.id] ?? []}
                 onChange={(next) => setRows((r) => ({ ...r, [x.exercise.id]: next }))}
               />
@@ -98,11 +117,15 @@ export default function WorkoutScreen() {
   );
 }
 
-function ExerciseBlock({ item, rows, onChange }: { item: WorkoutItem; rows: Row[]; onChange: (rows: Row[]) => void }) {
-  const { exercise, target, previous } = item;
+function ExerciseBlock({ item, beginner, rows, onChange }: {
+  item: WorkoutItem;
+  beginner: boolean;
+  rows: Row[];
+  onChange: (rows: Row[]) => void;
+}) {
+  const { exercise, targetMuscle, prescription, note, target, previous } = item;
   const prevSets = previous ? workingSets(previous.sets) : [];
-  const current = parseRows(rows);
-  const live = comparePerformance(current, previous?.sets ?? null);
+  const live = comparePerformance(parseRows(rows), previous?.sets ?? null);
   const decision = DECISION_UI[target.decision];
   const update = (i: number, patch: Partial<Row>) => onChange(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
 
@@ -110,7 +133,14 @@ function ExerciseBlock({ item, rows, onChange }: { item: WorkoutItem; rows: Row[
     <Card style={{ gap: spacing.md }}>
       <View style={{ gap: 2 }}>
         <Text style={styles.title}>{exercise.name}</Text>
-        <Text style={styles.muted}>{TYPE_LABELS[exercise.type]} · rango {exercise.repMin}-{exercise.repMax} reps</Text>
+        <Text style={styles.muted}>{MUSCLE_LABELS[targetMuscle]} · rango {prescription.repMin}-{prescription.repMax} reps</Text>
+        {note && <Text style={styles.text}>📝 {note}</Text>}
+        {exercise.coachTip && <Text style={[styles.muted, { color: colors.accent }]}>💡 {exercise.coachTip}</Text>}
+        {exercise.demoUrl && (
+          <Pressable onPress={() => Linking.openURL(exercise.demoUrl!).catch(() => Alert.alert('No se pudo abrir la demostración'))}>
+            <Text style={{ color: colors.accent }}>▶ Ver demostración</Text>
+          </Pressable>
+        )}
       </View>
 
       <View style={{ gap: 2 }}>
@@ -131,33 +161,55 @@ function ExerciseBlock({ item, rows, onChange }: { item: WorkoutItem; rows: Row[
       </View>
       {rows.map((r, i) => {
         const prev = prevSets[i] ?? null;
-        const set = { weightKg: toNumber(r.weight), reps: toNumber(r.reps) };
+        const set: SetLog = { weightKg: toNumber(r.weight), reps: toNumber(r.reps) };
         const valid = Number.isFinite(set.weightKg) && Number.isInteger(set.reps) && set.reps > 0;
+        const rir = rirFromFeedback({ feel: r.feel ?? undefined, rpe: parseRpe(r.rpe) });
+        const cue = rir !== null ? effortCue(rir) : null;
         return (
-          <View key={i} style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
-            <Text style={[styles.muted, { width: 18 }]}>{i + 1}</Text>
-            <Text style={[styles.text, { width: 72, color: colors.muted }]}>{prev ? `${prev.weightKg}×${prev.reps}` : '—'}</Text>
-            <TextInput
-              style={[styles.input, { flex: 1 }]}
-              keyboardType="decimal-pad"
-              selectTextOnFocus
-              value={r.weight}
-              onChangeText={(v) => update(i, { weight: v })}
-            />
-            <TextInput
-              style={[styles.input, { flex: 1 }]}
-              keyboardType="number-pad"
-              selectTextOnFocus
-              value={r.reps}
-              onChangeText={(v) => update(i, { reps: v })}
-            />
-            <View style={{ width: 64, alignItems: 'flex-end' }}>{valid && <SetDelta current={set} previous={prev} />}</View>
+          <View key={i} style={{ gap: spacing.xs }}>
+            <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
+              <Text style={[styles.muted, { width: 18 }]}>{i + 1}</Text>
+              <Text style={[styles.text, { width: 72, color: colors.muted }]}>{prev ? `${prev.weightKg}×${prev.reps}` : '—'}</Text>
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                keyboardType="decimal-pad"
+                selectTextOnFocus
+                value={r.weight}
+                onChangeText={(v) => update(i, { weight: v })}
+              />
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                keyboardType="number-pad"
+                selectTextOnFocus
+                value={r.reps}
+                onChangeText={(v) => update(i, { reps: v })}
+              />
+              <View style={{ width: 64, alignItems: 'flex-end' }}>{valid && <SetDelta current={set} previous={prev} />}</View>
+            </View>
+            <View style={{ paddingLeft: 26 }}>
+              {beginner ? (
+                <Chips options={FEELS} value={r.feel} onChange={(feel) => update(i, { feel })} labels={FEEL_SHORT} small allowNone />
+              ) : (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                  <Text style={styles.label}>RPE</Text>
+                  <TextInput
+                    style={[styles.input, { width: 64, paddingVertical: 6 }]}
+                    keyboardType="decimal-pad"
+                    placeholder="1-10"
+                    placeholderTextColor={colors.muted}
+                    value={r.rpe}
+                    onChangeText={(v) => update(i, { rpe: v })}
+                  />
+                </View>
+              )}
+              {cue && <Text style={{ color: colors.warning, fontSize: 13, marginTop: 4 }}>{cue}</Text>}
+            </View>
           </View>
         );
       })}
 
       <View style={{ flexDirection: 'row', gap: spacing.lg, justifyContent: 'center' }}>
-        <Pressable onPress={() => onChange([...rows, rows[rows.length - 1] ?? { weight: '0', reps: '0' }])}>
+        <Pressable onPress={() => onChange([...rows, { ...(rows[rows.length - 1] ?? { weight: '0', reps: '0' }), feel: null, rpe: '' }])}>
           <Text style={{ color: colors.accent }}>+ Serie</Text>
         </Pressable>
         {rows.length > 0 && (
