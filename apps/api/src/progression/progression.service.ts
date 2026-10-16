@@ -18,6 +18,7 @@ export class ProgressionService {
     settings: ExerciseSettings,
   ): Promise<NextTarget> {
     const history = await this.exercises.history(userId, exerciseId, HISTORY_WINDOW);
-    return computeNextTarget(toProgressionScheme(prescription, settings), history);
+    // En la descarga el peso baja a propósito: no cuenta para la progresión.
+    return computeNextTarget(toProgressionScheme(prescription, settings), history.filter((h) => !h.isDeload));
   }
 }

@@ -145,7 +145,7 @@ Es el mismo número para **todos** los músculos: el principiante no prioriza y 
 manejar (hay quien rinde con menos de 10 series semanales de pecho y quien necesita más; las dos
 cosas están bien) y desde ahí se ajusta.
 
-### 5.3 Ajuste de volumen 🔜
+### 5.3 Ajuste de volumen ✅
 
 El volumen se ajusta **por músculo**, deducido del **rendimiento** (no se le pregunta al usuario):
 
@@ -236,6 +236,14 @@ Detalles que las reglas no fijaban y se resolvieron en `packages/domain`. Son f�
 | Descarga general | Además del 3 de cada 4, hacen falta al menos 4 grupos evaluados (con 2+ sesiones en la ventana) | `volume/adjustment.ts` |
 | Mitad de series | Se redondea hacia arriba (7 → 4) | `volume/adjustment.ts` |
 | Vuelta de la descarga | +2 series por semana por grupo | `volume/adjustment.ts` |
+| Duración de la descarga | 7 días desde que se acepta (o desde que se dispara, en modo automático) | `volume/deload.ts` |
+| Series de cada ejercicio en la descarga y la vuelta | Se reducen en proporción al volumen de su músculo esa semana, redondeando hacia arriba y con mínimo 1 (3 series → 2) | `volume/deload.ts` |
+| Qué sesiones cuentan | Las de descarga no cuentan para ajustar volumen, ni para la progresión, ni como "última vez" | `volume/history.ts`, API |
+| Desde cuándo se reevalúa | Después de aceptar o descartar un cambio de un músculo, solo cuentan las sesiones posteriores; después de una descarga, las posteriores a su semana | `apps/api/src/volume/adjustments.service.ts` |
+| Descarga y ajuste por músculo | Si hay una descarga propuesta o se dispara una, no se baja volumen músculo por músculo: lo resuelve la descarga | `apps/api/src/volume/adjustments.service.ts` |
+| Descarga descartada | Se vuelve a evaluar con lo que se entrene desde que se descartó | `apps/api/src/volume/adjustments.service.ts` |
+| Piso | Un ajuste nunca deja un músculo por debajo de 1 serie semanal | `apps/api/src/volume/volume.service.ts` |
+| Sesión sin rutina | Los ajustes quedan como sugerencia (el modo automático es de la rutina) | `apps/api/src/sessions/sessions.service.ts` |
 | Tipo de día | 1–2 días, o 3 sin prioridad: full body. Si no, alterna inferior/superior empezando por el tren priorizado (sin prioridad, por inferior) | `planning/planner.ts` |
 | Abdominales | Van con el tren inferior | `training/muscles.ts` |
 | Músculos chicos | Frecuencia 2 como el resto; la 3 queda para los priorizados | `planning/planner.ts` |
@@ -247,3 +255,6 @@ Detalles que las reglas no fijaban y se resolvieron en `packages/domain`. Son f�
   y prioridad (tren superior / inferior). Se propone en código y se valida con el coach.
 - **Selección de ejercicios** en rutinas generadas: qué ejercicios y ángulos elige la app para cada
   músculo (depende del catálogo).
+  - **Principiante** (definido por el coach): tocar **todos los músculos**, priorizando
+    **multiarticulares** que cubran varios a la vez.
+  - Falta definir: intermedio / avanzado, y cómo se elige entre varios multiarticulares posibles.

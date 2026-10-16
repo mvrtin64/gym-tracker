@@ -2,6 +2,7 @@ import { Link, Redirect, router } from 'expo-router';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useProfile, useRoutines, useVolume } from '../api/hooks';
 import type { VolumeSummaryDto } from '../api/types';
+import { DeloadCard, PendingChanges } from '../components/adjustments';
 import { Button, Card, ProgressBar, QueryState, styles } from '../components/ui';
 import { colors, LEVEL_LABELS, MUSCLE_LABELS, spacing, WEEKDAY_LABELS } from '../theme';
 
@@ -36,6 +37,8 @@ function Dashboard({ levelLabel }: { levelLabel: string }) {
         <ScrollView
           contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}
           refreshControl={<RefreshControl refreshing={routines.isRefetching} onRefresh={refetch} tintColor={colors.accent} />}>
+          {volume.data.deload && <DeloadCard deload={volume.data.deload} />}
+          <PendingChanges changes={volume.data.pendingChanges} />
           <WeekCard volume={volume.data} />
           <Button title="Ver plan de la semana" variant="ghost" onPress={() => router.push('/plan')} />
 
@@ -70,27 +73,25 @@ function WeekCard({ volume }: { volume: VolumeSummaryDto }) {
   const muscles = volume.muscles.filter((m) => m.target > 0);
   const done = muscles.reduce((sum, m) => sum + Math.min(m.done, m.target), 0);
   const target = muscles.reduce((sum, m) => sum + m.target, 0);
-  const pending = volume.pendingChanges.length;
+  const title = volume.deload?.phase === 'deload' ? 'Esta semana (descarga)' : volume.deload?.phase === 'returning' ? 'Esta semana (volviendo)' : 'Esta semana';
   return (
     <Card style={{ gap: spacing.md }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <Text style={styles.title}>Esta semana</Text>
+        <Text style={styles.title}>{title}</Text>
         <Text style={styles.muted}>{done} de {target} series</Text>
       </View>
       {muscles.map((m) => (
         <View key={m.muscle} style={{ gap: 4 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <Text style={styles.text}>{MUSCLE_LABELS[m.muscle]}</Text>
-            <Text style={[styles.muted, m.done >= m.target && { color: colors.success }]}>{m.done}/{m.target}</Text>
+            <Text style={[styles.muted, m.done >= m.target && { color: colors.success }]}>
+              {m.done}/{m.target}
+              {m.target < m.baseTarget ? ` (de ${m.baseTarget})` : ''}
+            </Text>
           </View>
           <ProgressBar done={m.done} target={m.target} />
         </View>
       ))}
-      {pending > 0 && (
-        <Text style={{ color: colors.warning }}>
-          {pending === 1 ? '1 sugerencia de volumen pendiente.' : `${pending} sugerencias de volumen pendientes.`}
-        </Text>
-      )}
     </Card>
   );
 }

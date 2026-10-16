@@ -81,6 +81,7 @@ export class ExercisesService {
     return entries.map((e) => ({
       sessionId: e.sessionId,
       performedAt: e.session.performedAt,
+      isDeload: e.session.isDeload,
       targetMuscle: e.targetMuscle,
       sets: e.sets.map(toSetLog),
     }));

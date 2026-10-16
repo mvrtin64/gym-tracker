@@ -2,8 +2,8 @@ import type { Muscle } from '@gym/domain';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from './client';
 import type {
-  ExerciseDto, ExerciseSettingsDto, HistoryItemDto, NewExercise, NewRoutine, NewSession, PlanDto, ProfileDto,
-  ProfileInput, RoutineDto, VolumeSummaryDto, WorkoutDto,
+  ExerciseDto, ExerciseSettingsDto, HistoryItemDto, LoggedSessionDto, NewExercise, NewRoutine, NewSession, PlanDto,
+  ProfileDto, ProfileInput, RoutineDto, VolumeSummaryDto, WorkoutDto,
 } from './types';
 
 export const keys = {
@@ -96,9 +96,33 @@ export function useCreateRoutine() {
 export function useLogSession() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: NewSession) => api('/sessions', { method: 'POST', body }),
-    // Al registrar cambian el objetivo de la próxima sesión, el historial y el volumen de la semana.
+    mutationFn: (body: NewSession) => api<LoggedSessionDto>('/sessions', { method: 'POST', body }),
+    // Al registrar cambian el objetivo de la próxima sesión, el historial, el volumen y quizás el plan (ajustes).
     onSuccess: () =>
-      Promise.all([keys.exercises, keys.routines, keys.volume].map((queryKey) => qc.invalidateQueries({ queryKey }))),
+      Promise.all(
+        [keys.exercises, keys.routines, keys.volume, keys.plan].map((queryKey) => qc.invalidateQueries({ queryKey })),
+      ),
+  });
+}
+
+/** Aceptar o descartar una sugerencia de volumen. */
+export function useResolveChange() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, action }: { id: string; action: 'accept' | 'dismiss' }) =>
+      api(`/volume/changes/${id}/${action}`, { method: 'POST' }),
+    onSuccess: () => Promise.all([keys.volume, keys.plan].map((queryKey) => qc.invalidateQueries({ queryKey }))),
+  });
+}
+
+/** Arrancar o descartar una semana de descarga propuesta. */
+export function useResolveDeload() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, action }: { id: string; action: 'start' | 'dismiss' }) =>
+      api(`/volume/deload/${id}/${action}`, { method: 'POST' }),
+    // Cambia el volumen de la semana y el objetivo de cada entrenamiento.
+    onSuccess: () =>
+      Promise.all([keys.volume, keys.plan, keys.routines].map((queryKey) => qc.invalidateQueries({ queryKey }))),
   });
 }

@@ -7,6 +7,7 @@ erDiagram
   User ||--o| TrainingProfile : tiene
   User ||--o{ MuscleVolume : "objetivo por músculo"
   MuscleVolume ||--o{ VolumeChange : historial
+  User ||--o{ Deload : "descargas"
   User ||--o{ UserExercise : "datos propios"
   User ||--o{ Routine : arma
   User ||--o{ WorkoutSession : registra
@@ -28,7 +29,8 @@ erDiagram
 |---|---|---|
 | `TrainingProfile` | `level`, `trainingDays` (lun…dom), `focus`, `priorityMuscles`, `preferredRepMin/Max` | 1:1 con `User`. El principiante no tiene enfoque ni prioridades (§2) |
 | `MuscleVolume` | `muscle`, `weeklySets` | Valor **actual** del objetivo semanal por músculo |
-| `VolumeChange` | `muscle`, `delta`, `reason`, `status` (`suggested` · `applied` · `dismissed`), `createdAt` | Historial: permite explicar *por qué* cambió. En rutinas propias queda `suggested` hasta que el usuario acepta |
+| `VolumeChange` | `muscle`, `delta`, `reason`, `status` (`suggested` · `applied` · `dismissed`), `createdAt`, `decidedAt` | Historial: permite explicar *por qué* cambió. Con `adjustMode: suggest` queda `suggested` hasta que el usuario acepta o descarta; desde `decidedAt` se vuelve a evaluar el músculo |
+| `Deload` | `status` (`suggested` · `started` · `dismissed`), `reason`, `startedAt`, `decidedAt` | Descarga general (§5.3). La fase (semana de descarga, vuelta, terminada) y el volumen de cada semana se **calculan** desde `startedAt`: `MuscleVolume` no se toca y sigue siendo el volumen al que se vuelve |
 
 ### Ejercicios
 
@@ -69,5 +71,7 @@ Funciones puras, sin framework, con tests:
 | `rir` | Sensación / RPE → RIR |
 | `volume` | Series efectivas semanales por músculo; volumen inicial según perfil |
 | `adjustment` | Estancamiento por músculo y general; semana de descarga y vuelta gradual |
+| `history` | Arma el historial de cada músculo comparando cada ejercicio con la vez anterior (sin descargas) |
+| `deload` | Fase y volumen de una descarga según la fecha; series por ejercicio cuando el volumen está reducido |
 | `planning` | Reparto por días: frecuencia, descanso entre días, series por ejercicio |
 | `progression` | Doble progresión (ya existe) |

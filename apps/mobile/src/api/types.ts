@@ -1,4 +1,6 @@
-import type { ExerciseType, Feel, Focus, Level, Muscle, NextTarget, SetLog, Weekday, WeekPlan } from '@gym/domain';
+import type {
+  DeloadPhase, ExerciseType, Feel, Focus, Level, Muscle, NextTarget, SetLog, Weekday, WeekPlan,
+} from '@gym/domain';
 
 /** Respuestas de la API (las fechas llegan como string ISO). */
 
@@ -86,6 +88,8 @@ export interface WorkoutDto {
     /** Lo que hizo la última vez (de esta rutina si existe; si no, de cualquier sesión). */
     previous: { performedAt: string; fromRoutine: boolean; sets: LoggedSet[] } | null;
   }[];
+  /** Descarga en curso: el objetivo ya viene con las series (y en la semana de descarga, el peso) reducidos. */
+  deload: { phase: DeloadPhase; endsAt: string; doneAt: string; rir: { min: number; max: number } } | null;
 }
 
 export interface NewSet {
@@ -135,10 +139,36 @@ export interface VolumeChangeDto {
   createdAt: string;
 }
 
+/** Descarga general: propuesta (`suggested`) o en curso (`started`, con su fase y fechas). */
+export interface DeloadDto {
+  id: string;
+  status: 'suggested' | 'started' | 'dismissed';
+  reason: string;
+  phase?: DeloadPhase;
+  startedAt?: string;
+  endsAt?: string;
+  doneAt?: string;
+}
+
 export interface VolumeSummaryDto {
   weekStart: string;
-  muscles: { muscle: Muscle; target: number; done: number }[];
+  /** `target` es el de esta semana (reducido si hay descarga); `baseTarget`, al que se vuelve. */
+  muscles: { muscle: Muscle; target: number; baseTarget: number; done: number }[];
   pendingChanges: VolumeChangeDto[];
+  deload: DeloadDto | null;
+}
+
+/** Lo que la app decidió sobre el volumen después de registrar una sesión. */
+export interface SessionReviewDto {
+  volumeChanges: VolumeChangeDto[];
+  pushHarder: { muscle: Muscle; reason: string }[];
+  deload: DeloadDto | null;
+}
+
+export interface LoggedSessionDto {
+  id: string;
+  isDeload: boolean;
+  review: SessionReviewDto;
 }
 
 export type PlanDto = WeekPlan;

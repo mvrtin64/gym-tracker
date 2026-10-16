@@ -107,8 +107,10 @@ pnpm typecheck   # todos los paquetes
 |---|---|---|
 | GET | `/profile` | Perfil de entrenamiento (respuestas del onboarding) |
 | PUT | `/profile` | Guarda el onboarding; la primera vez fija el **volumen inicial** por músculo |
-| GET | `/volume` | Series semanales objetivo vs. hechas esta semana, por músculo, y sugerencias pendientes |
+| GET | `/volume` | Series semanales objetivo vs. hechas esta semana, por músculo, sugerencias pendientes y descarga |
 | PUT | `/volume/:muscle` | Cambio manual del objetivo semanal (queda en el historial) |
+| POST | `/volume/changes/:id/accept` · `/dismiss` | Acepta o descarta una sugerencia de volumen |
+| POST | `/volume/deload/:id/start` · `/dismiss` | Arranca o descarta una semana de descarga propuesta |
 | GET | `/plan` | **Vista previa de la semana**: músculos y series de cada día |
 | GET | `/exercises` | Catálogo global + ejercicios propios, con la configuración del usuario |
 | POST | `/exercises` | Crea un ejercicio propio (tipo, músculos posibles, enfoque por defecto) |
@@ -116,10 +118,10 @@ pnpm typecheck   # todos los paquetes
 | PUT | `/exercises/:id/settings` | Anotación del usuario (ej. *"banco a 30°"*) e incremento de peso |
 | GET | `/exercises/:id/history` | Sesiones anteriores con sus series |
 | GET | `/sessions` | Últimas sesiones |
-| POST | `/sessions` | Registra una sesión; cada serie con sensación o RPE → RIR calculado |
+| POST | `/sessions` | Registra una sesión (sensación o RPE → RIR por serie) y devuelve los **ajustes**: bajar series, apretar más o semana de descarga |
 | GET | `/routines` | Rutinas con su prescripción y la fecha de la última vez |
 | POST | `/routines` | Crea una rutina: ejercicios en orden, enfoque, series y rango |
-| GET | `/routines/:id/workout` | **Entrenamiento del día**: objetivo, anotación y última vez por ejercicio |
+| GET | `/routines/:id/workout` | **Entrenamiento del día**: objetivo, anotación y última vez por ejercicio (reducido si hay descarga) |
 
 ## Roadmap
 
