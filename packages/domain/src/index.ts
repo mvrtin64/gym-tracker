@@ -8,4 +8,6 @@ export * from './training/profile';
 export * from './feedback/rir';
 export * from './volume/volume';
 export * from './volume/adjustment';
+export * from './volume/history';
+export * from './volume/deload';
 export * from './planning/planner';

@@ -79,6 +79,13 @@ enum VolumeChangeStatus {
   dismissed
 }
 
+/// suggested: la app propone la descarga. started: arrancó (la fase sale de startedAt). dismissed: descartada.
+enum DeloadStatus {
+  suggested
+  started
+  dismissed
+}
+
 model User {
   id            String           @id @default(uuid())
   email         String           @unique
@@ -87,6 +94,7 @@ model User {
   profile       TrainingProfile?
   volumes       MuscleVolume[]
   volumeChanges VolumeChange[]
+  deloads       Deload[]
   ownExercises  Exercise[]
   exercises     UserExercise[]
   routines      Routine[]
@@ -127,6 +135,24 @@ model VolumeChange {
   reason    String
   status    VolumeChangeStatus
   createdAt DateTime           @default(now())
+  /// Cuándo se aplicó o descartó. Desde ahí se vuelve a evaluar el músculo.
+  decidedAt DateTime?
+
+  @@index([userId, createdAt])
+}
+
+/// Descarga general (docs/dominio.md §5.3). El volumen de la semana y de la vuelta se calcula desde
+/// startedAt sin tocar MuscleVolume, que sigue guardando el volumen al que se vuelve.
+model Deload {
+  id        String       @id @default(uuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    DeloadStatus
+  reason    String
+  createdAt DateTime     @default(now())
+  /// Cuándo se resolvió (arrancó o se descartó).
+  decidedAt DateTime?
+  startedAt DateTime?
 
   @@index([userId, createdAt])
 }

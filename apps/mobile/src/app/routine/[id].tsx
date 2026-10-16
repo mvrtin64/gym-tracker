@@ -6,7 +6,8 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useLogSession, useProfile, useWorkout } from '../../api/hooks';
-import type { NewSet, WorkoutDto } from '../../api/types';
+import type { NewSet, SessionReviewDto, WorkoutDto } from '../../api/types';
+import { ReviewCard } from '../../components/adjustments';
 import { Button, Card, Chips, QueryState, styles } from '../../components/ui';
 import { colors, COMPARISON_UI, DECISION_UI, FEEL_LABELS, MUSCLE_LABELS, spacing } from '../../theme';
 
@@ -51,7 +52,7 @@ export default function WorkoutScreen() {
   const logSession = useLogSession();
   const [rows, setRows] = useState<Record<string, Row[]>>({});
   // Se congela al guardar: después la API ya devuelve la sesión de hoy como "última vez".
-  const [results, setResults] = useState<Result[] | null>(null);
+  const [results, setResults] = useState<{ items: Result[]; review: SessionReviewDto } | null>(null);
   const beginner = profile.data?.level === 'beginner';
 
   useEffect(() => {
@@ -72,26 +73,41 @@ export default function WorkoutScreen() {
     logSession.mutate(
       { routineId: id, entries: done.map((x) => ({ exerciseId: x.item.exercise.id, sets: x.sets })) },
       {
-        onSuccess: () =>
-          setResults(done.map((x) => ({
-            name: x.item.exercise.name,
-            comparison: comparePerformance(x.sets, x.item.previous?.sets ?? null),
-          }))),
+        onSuccess: (session) =>
+          setResults({
+            items: done.map((x) => ({
+              name: x.item.exercise.name,
+              comparison: comparePerformance(x.sets, x.item.previous?.sets ?? null),
+            })),
+            review: session.review,
+          }),
         onError: (e) => Alert.alert('No se guardó', e.message),
       },
     );
   };
 
   const data = workout.data;
+  // En la semana de descarga se entrena liviano a propósito: no se compara ni se pide apretar.
+  const deloadWeek = data?.deload?.phase === 'deload';
   return (
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Stack.Screen options={{ title: data?.name ?? '' }} />
       <QueryState isLoading={workout.isLoading} error={workout.error} onRetry={workout.refetch} />
       {results ? (
-        <Summary results={results} />
+        <Summary results={results.items} review={results.review} deloadWeek={deloadWeek} />
       ) : (
         data && (
           <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }} keyboardShouldPersistTaps="handled">
+            {data.deload && (
+              <Card style={{ gap: spacing.xs, borderColor: colors.accent }}>
+                <Text style={styles.title}>{deloadWeek ? 'Semana de descarga' : 'Volviendo de la descarga'}</Text>
+                <Text style={styles.muted}>
+                  {deloadWeek
+                    ? `Mitad de series y de peso. Dejá ${data.deload.rir.min}–${data.deload.rir.max} reps en reserva: hoy no se busca progresar.`
+                    : 'Las series todavía están reducidas: suben de a poco cada semana.'}
+                </Text>
+              </Card>
+            )}
             <Text style={styles.muted}>
               {data.lastPerformedAt
                 ? `Comparando con la última vez que hiciste ${data.name}: ${shortDate(data.lastPerformedAt)}.`
@@ -105,6 +121,7 @@ export default function WorkoutScreen() {
                 key={x.exercise.id}
                 item={x}
                 beginner={beginner}
+                deloadWeek={deloadWeek}
                 rows={rows[x.exercise.id] ?? []}
                 onChange={(next) => setRows((r) => ({ ...r, [x.exercise.id]: next }))}
               />
@@ -117,9 +134,10 @@ export default function WorkoutScreen() {
   );
 }
 
-function ExerciseBlock({ item, beginner, rows, onChange }: {
+function ExerciseBlock({ item, beginner, deloadWeek, rows, onChange }: {
   item: WorkoutItem;
   beginner: boolean;
+  deloadWeek: boolean;
   rows: Row[];
   onChange: (rows: Row[]) => void;
 }) {
@@ -164,7 +182,7 @@ function ExerciseBlock({ item, beginner, rows, onChange }: {
         const set: SetLog = { weightKg: toNumber(r.weight), reps: toNumber(r.reps) };
         const valid = Number.isFinite(set.weightKg) && Number.isInteger(set.reps) && set.reps > 0;
         const rir = rirFromFeedback({ feel: r.feel ?? undefined, rpe: parseRpe(r.rpe) });
-        const cue = rir !== null ? effortCue(rir) : null;
+        const cue = rir !== null && !deloadWeek ? effortCue(rir) : null;
         return (
           <View key={i} style={{ gap: spacing.xs }}>
             <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
@@ -184,7 +202,7 @@ function ExerciseBlock({ item, beginner, rows, onChange }: {
                 value={r.reps}
                 onChangeText={(v) => update(i, { reps: v })}
               />
-              <View style={{ width: 64, alignItems: 'flex-end' }}>{valid && <SetDelta current={set} previous={prev} />}</View>
+              <View style={{ width: 64, alignItems: 'flex-end' }}>{valid && !deloadWeek && <SetDelta current={set} previous={prev} />}</View>
             </View>
             <View style={{ paddingLeft: 26 }}>
               {beginner ? (
@@ -219,7 +237,7 @@ function ExerciseBlock({ item, beginner, rows, onChange }: {
         )}
       </View>
 
-      <StatusLine comparison={live} />
+      {!deloadWeek && <StatusLine comparison={live} />}
     </Card>
   );
 }
@@ -244,13 +262,18 @@ function StatusLine({ comparison }: { comparison: PerformanceComparison }) {
   );
 }
 
-function Summary({ results }: { results: Result[] }) {
+function Summary({ results, review, deloadWeek }: { results: Result[]; review: SessionReviewDto; deloadWeek: boolean }) {
   const improved = results.filter((r) => r.comparison.status === 'improved').length;
   return (
     <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}>
       <Text style={{ color: colors.text, fontSize: 26, fontWeight: '800' }}>¡Entrenamiento guardado!</Text>
-      <Text style={styles.muted}>Progresaste en {improved} de {results.length} ejercicios respecto de la última vez.</Text>
-      {results.map((r) => (
+      {deloadWeek ? (
+        <Text style={styles.muted}>Sesión de descarga: no cuenta para comparar ni para ajustar el volumen.</Text>
+      ) : (
+        <Text style={styles.muted}>Progresaste en {improved} de {results.length} ejercicios respecto de la última vez.</Text>
+      )}
+      <ReviewCard review={review} />
+      {!deloadWeek && results.map((r) => (
         <Card key={r.name} style={{ gap: spacing.xs, borderColor: COMPARISON_UI[r.comparison.status].color }}>
           <Text style={styles.title}>{r.name}</Text>
           <StatusLine comparison={r.comparison} />

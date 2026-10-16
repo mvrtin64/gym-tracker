@@ -17,7 +17,7 @@ export class PlanController {
    */
   @Get()
   async preview(@CurrentUserId() userId: string) {
-    const [profile, volume] = await Promise.all([this.profile.getDomain(userId), this.volume.current(userId)]);
+    const [profile, volume] = await Promise.all([this.profile.getDomain(userId), this.volume.effective(userId)]);
     return planWeek(profile, volume);
   }
 }

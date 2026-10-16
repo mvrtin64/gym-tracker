@@ -1,3 +1,4 @@
+import { DELOAD_WEEK, deloadWeight, scaleSets } from '@gym/domain';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { definedOnly } from '../common/objects';
 import { toSetLog } from '../common/set-log';
@@ -6,6 +7,7 @@ import { ExercisesService } from '../exercises/exercises.service';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProgressionService } from '../progression/progression.service';
+import { VolumeService } from '../volume/volume.service';
 import { CreateRoutineDto } from './dto/create-routine.dto';
 
 const withExercises = (userId: string) =>
@@ -22,6 +24,7 @@ export class RoutinesService {
     private readonly prisma: PrismaService,
     private readonly exercises: ExercisesService,
     private readonly progression: ProgressionService,
+    private readonly volume: VolumeService,
   ) {}
 
   async list(userId: string) {
@@ -83,17 +86,24 @@ export class RoutinesService {
   /**
    * Arma el entrenamiento del día: para cada ejercicio, su prescripción, el objetivo de hoy, la
    * anotación del usuario y lo que hizo la última vez que entrenó esta rutina (o, si el ejercicio
-   * es nuevo en la rutina, la última vez que lo hizo en cualquier sesión).
+   * es nuevo en la rutina, la última vez que lo hizo en cualquier sesión). Las sesiones de descarga
+   * no sirven de referencia.
+   *
+   * Con una descarga en curso las series se reducen en proporción al volumen de la semana; en la
+   * semana de descarga, además, el peso va a la mitad y se apunta a RIR 4–5 (§5.3).
    */
   async workout(userId: string, id: string) {
     const routine = await this.prisma.routine.findFirst({ where: { id, userId }, include: withExercises(userId) });
     if (!routine) throw new NotFoundException('Rutina no encontrada');
 
-    const lastSession = await this.prisma.workoutSession.findFirst({
-      where: { routineId: id },
-      orderBy: { performedAt: 'desc' },
-      include: { entries: { include: { sets: { orderBy: { position: 'asc' } } } } },
-    });
+    const [lastSession, deload] = await Promise.all([
+      this.prisma.workoutSession.findFirst({
+        where: { routineId: id, isDeload: false },
+        orderBy: { performedAt: 'desc' },
+        include: { entries: { include: { sets: { orderBy: { position: 'asc' } } } } },
+      }),
+      this.volume.activeDeload(userId),
+    ]);
 
     const exercises = await Promise.all(
       routine.exercises.map(async ({ exercise: { userData, ...exercise }, targetMuscle, sets, repMin, repMax }) => {
@@ -103,8 +113,21 @@ export class RoutinesService {
         const previous =
           lastSession && entry
             ? { performedAt: lastSession.performedAt, fromRoutine: true, sets: entry.sets.map(toSetLog) }
-            : await this.exercises.history(userId, exercise.id, 1).then((h) => (h[0] ? { ...h[0], fromRoutine: false } : null));
-        const target = await this.progression.nextTarget(userId, exercise.id, prescription, settings);
+            : await this.exercises
+                .history(userId, exercise.id, 5)
+                .then((h) => h.find((x) => !x.isDeload))
+                .then((h) => (h ? { ...h, fromRoutine: false } : null));
+        let target = await this.progression.nextTarget(userId, exercise.id, prescription, settings);
+        if (deload) {
+          target = { ...target, sets: scaleSets(target.sets, deload.volume[targetMuscle], deload.base[targetMuscle]) };
+        }
+        if (deload?.phase === 'deload') {
+          target = {
+            ...target,
+            weightKg: deloadWeight(target.weightKg, settings.weightIncrementKg),
+            reason: `Semana de descarga: mitad de series y de peso. Dejá ${DELOAD_WEEK.rir.min}–${DELOAD_WEEK.rir.max} reps en reserva.`,
+          };
+        }
         return { exercise, targetMuscle, prescription, note: settings.note, target, previous };
       }),
     );
@@ -115,6 +138,7 @@ export class RoutinesService {
       weekday: routine.weekday,
       adjustMode: routine.adjustMode,
       lastPerformedAt: lastSession?.performedAt ?? null,
+      deload: deload && { phase: deload.phase, endsAt: deload.endsAt, doneAt: deload.doneAt, rir: DELOAD_WEEK.rir },
       exercises,
     };
   }

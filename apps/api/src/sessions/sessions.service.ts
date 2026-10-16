@@ -1,14 +1,21 @@
 import { rirFromFeedback, type Muscle } from '@gym/domain';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { visibleTo } from '../exercises/exercise.mapper';
+import type { AdjustMode } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { AdjustmentsService, type SessionReview } from '../volume/adjustments.service';
+import { VolumeService } from '../volume/volume.service';
 import { CreateSessionDto } from './dto/create-session.dto';
 
 const withSets = { entries: { orderBy: { position: 'asc' }, include: { exercise: true, sets: { orderBy: { position: 'asc' } } } } } as const;
 
 @Injectable()
 export class SessionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly volume: VolumeService,
+    private readonly adjustments: AdjustmentsService,
+  ) {}
 
   list(userId: string, take = 20) {
     return this.prisma.workoutSession.findMany({
@@ -27,10 +34,13 @@ export class SessionsService {
 
     // El músculo objetivo de cada ejercicio en la rutina, para copiarlo en lo anotado.
     let routineTargets = new Map<string, Muscle>();
+    // Fuera de una rutina, los ajustes quedan como sugerencia.
+    let adjustMode: AdjustMode = 'suggest';
     if (dto.routineId) {
       const routine = await this.prisma.routine.findFirst({ where: { id: dto.routineId, userId }, include: { exercises: true } });
       if (!routine) throw new BadRequestException('La rutina no existe');
       routineTargets = new Map(routine.exercises.map((e) => [e.exerciseId, e.targetMuscle]));
+      adjustMode = routine.adjustMode;
     }
 
     const entries = dto.entries.map((entry, i) => {
@@ -50,16 +60,23 @@ export class SessionsService {
       };
     });
 
-    return this.prisma.workoutSession.create({
+    // Lo que se entrena durante la semana de descarga queda marcado como descarga.
+    const isDeload = dto.isDeload ?? (await this.volume.activeDeload(userId))?.phase === 'deload';
+    const session = await this.prisma.workoutSession.create({
       data: {
         userId,
         performedAt: dto.performedAt ? new Date(dto.performedAt) : undefined,
         notes: dto.notes,
         routineId: dto.routineId,
-        isDeload: dto.isDeload,
+        isDeload,
         entries: { create: entries },
       },
       include: withSets,
     });
+
+    const review: SessionReview = isDeload
+      ? { volumeChanges: [], pushHarder: [], deload: null }
+      : await this.adjustments.afterSession(userId, entries.map((e) => e.targetMuscle), adjustMode);
+    return { ...session, review };
   }
 }
