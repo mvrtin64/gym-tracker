@@ -89,6 +89,8 @@ enum DeloadStatus {
 model User {
   id            String           @id @default(uuid())
   email         String           @unique
+  /// Hash scrypt (ver src/auth/password.ts). Opcional para sumar después login con Google, etc.
+  passwordHash  String?
   name          String
   createdAt     DateTime         @default(now())
   profile       TrainingProfile?

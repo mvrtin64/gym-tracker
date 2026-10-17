@@ -86,7 +86,7 @@ Requisitos: Node 22+, pnpm, Docker y la app **Expo Go** en el celular (misma red
 pnpm install
 pnpm build:domain
 pnpm db:up                                   # PostgreSQL en Docker
-cp apps/api/.env.example apps/api/.env
+cp apps/api/.env.example apps/api/.env       # completá JWT_SECRET (el archivo explica cómo generarla)
 pnpm --filter @gym/api exec prisma migrate dev
 pnpm --filter @gym/api db:generate
 pnpm --filter @gym/api db:seed               # catálogo de ejercicios, usuario demo con perfil, 2 rutinas y una sesión pasada
@@ -95,6 +95,17 @@ pnpm mobile                                  # escaneá el QR con Expo Go
 ```
 
 La app encuentra la API sola usando la IP de la PC; para otra URL definí `EXPO_PUBLIC_API_URL`.
+Para entrar con los datos de ejemplo: **demo@gymtracker.dev** / **demo1234** (o creá una cuenta nueva y pasás por el onboarding).
+
+## Autenticación
+
+- Email y contraseña. La contraseña se guarda con **scrypt** y sal aleatoria (`node:crypto`, sin dependencias nativas).
+- La API devuelve un **JWT** (30 días). Un guard global exige `Authorization: Bearer <token>` en todos los
+  endpoints salvo los marcados `@Public()` (registro y login); `@CurrentUserId()` toma el usuario del token.
+- Login fallido responde lo mismo exista o no el email, y verifica igual un hash de relleno para no
+  revelar cuentas por el tiempo de respuesta.
+- En la app el token se guarda cifrado con `expo-secure-store` (Keychain / Keystore). Las pantallas están
+  protegidas con `Stack.Protected` de Expo Router; si la API responde 401 se cierra la sesión.
 
 ```bash
 pnpm test        # tests del dominio
@@ -105,6 +116,9 @@ pnpm typecheck   # todos los paquetes
 
 | Método | Ruta | Descripción |
 |---|---|---|
+| POST | `/auth/register` | Crea una cuenta (nombre, email, contraseña ≥ 8) y devuelve el token |
+| POST | `/auth/login` | Devuelve el token |
+| GET | `/auth/me` | Usuario de la sesión |
 | GET | `/profile` | Perfil de entrenamiento (respuestas del onboarding) |
 | PUT | `/profile` | Guarda el onboarding; la primera vez fija el **volumen inicial** por músculo |
 | GET | `/volume` | Series semanales objetivo vs. hechas esta semana, por músculo, sugerencias pendientes y descarga |
@@ -125,7 +139,8 @@ pnpm typecheck   # todos los paquetes
 
 ## Roadmap
 
-- [ ] Autenticación JWT (el punto de extensión ya está en `CurrentUserId`)
+- [x] Autenticación con email y contraseña (JWT)
+- [ ] Login con Google y recuperación de contraseña
 - [x] Rutinas (plantillas de sesión) con comparación contra la última vez
 - [ ] Progresión individualizada (subir peso o series según el usuario)
 - [ ] Gráficos de progreso (1RM estimado y volumen por semana)

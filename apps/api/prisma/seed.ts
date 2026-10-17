@@ -1,8 +1,12 @@
 import 'dotenv/config';
 import { MUSCLES, SCHEME_PRESETS, type ExerciseType, type Muscle } from '@gym/domain';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { hashPassword } from '../src/auth/password';
 import { PrismaClient } from '../src/generated/prisma/client';
-import { DEMO_USER_ID } from '../src/common/current-user.decorator';
+
+/** Usuario de demo: demo@gymtracker.dev / demo1234. */
+const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
+const DEMO_PASSWORD = 'demo1234';
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
 
@@ -95,10 +99,11 @@ async function seedCatalog() {
 async function main() {
   const ids = await seedCatalog();
 
+  const passwordHash = await hashPassword(DEMO_PASSWORD);
   await prisma.user.upsert({
     where: { id: DEMO_USER_ID },
-    update: {},
-    create: { id: DEMO_USER_ID, email: 'demo@gymtracker.dev', name: 'Demo' },
+    update: { passwordHash },
+    create: { id: DEMO_USER_ID, email: 'demo@gymtracker.dev', name: 'Demo', passwordHash },
   });
   await prisma.trainingProfile.upsert({
     where: { userId: DEMO_USER_ID },
