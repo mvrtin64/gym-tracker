@@ -2,19 +2,49 @@ import type {
   ComparisonStatus, DayKind, ExerciseType, Feel, Focus, Level, Muscle, ProgressionDecision, Weekday,
 } from '@gym/domain';
 
+/**
+ * Paleta: grises oscuros (no negro puro) en capas —fondo, tarjeta, superficie elevada— y un único
+ * acento. Opción elegida = acento sólido; no elegida = el mismo acento muy apagado.
+ */
 export const colors = {
-  bg: '#111317',
-  card: '#1b1e24',
-  border: '#2a2e36',
-  text: '#eceef2',
-  muted: '#8b919c',
+  bg: '#16171b',
+  card: '#1f2126',
+  /** Inputs, encabezados de tabla, chips sin elegir. */
+  surface: '#2a2d34',
+  border: '#33363e',
+  text: '#f2f3f5',
+  muted: '#8e939d',
   accent: '#f97316',
+  /** Acento apagado: fondo de opciones no elegidas y de pastillas. */
+  accentMuted: '#3d2516',
+  onAccent: '#ffffff',
   success: '#22c55e',
+  successMuted: '#173a26',
   warning: '#eab308',
+  warningMuted: '#3a3214',
   danger: '#ef4444',
 };
 
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 };
+
+export const radius = { sm: 6, md: 10, lg: 14, pill: 999 };
+
+/** Color de la etiqueta de cada músculo, agrupados por familia (empuje, hombro, tirón, pierna). */
+export const MUSCLE_COLORS: Record<Muscle, string> = {
+  chest: '#ec4899',
+  front_delt: '#f472b6',
+  triceps: '#db2777',
+  side_delt: '#a855f7',
+  rear_delt: '#8b5cf6',
+  upper_back: '#3b82f6',
+  lats: '#0ea5e9',
+  biceps: '#06b6d4',
+  abs: '#94a3b8',
+  quads: '#22c55e',
+  hamstrings: '#84cc16',
+  glutes: '#f59e0b',
+  calves: '#eab308',
+};
 
 export const MUSCLE_LABELS: Record<Muscle, string> = {
   front_delt: 'Deltoides anterior',
