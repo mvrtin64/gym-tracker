@@ -2,9 +2,9 @@ import { MUSCLES } from '@gym/domain';
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { useExercises } from '../api/hooks';
-import { Button, Card, Field, QueryState, styles } from '../components/ui';
-import { colors, MUSCLE_LABELS, spacing, TYPE_LABELS } from '../theme';
+import { useExercises } from '../../api/hooks';
+import { Button, Card, Field, QueryState, styles } from '../../components/ui';
+import { colors, MUSCLE_LABELS, spacing, TYPE_LABELS } from '../../theme';
 
 const normalize = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 

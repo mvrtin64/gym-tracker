@@ -1,7 +1,7 @@
 import { ScrollView, Text, View } from 'react-native';
-import { usePlan } from '../api/hooks';
-import { Card, QueryState, styles } from '../components/ui';
-import { colors, DAY_KIND_LABELS, MUSCLE_LABELS, spacing, WEEKDAY_LONG } from '../theme';
+import { usePlan } from '../../api/hooks';
+import { Card, QueryState, styles } from '../../components/ui';
+import { colors, DAY_KIND_LABELS, MUSCLE_LABELS, spacing, WEEKDAY_LONG } from '../../theme';
 
 /** Vista previa de la semana: músculos y series de cada día según el perfil y el volumen. */
 export default function PlanScreen() {
