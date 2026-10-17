@@ -1,10 +1,9 @@
-import { createParamDecorator } from '@nestjs/common';
+import { createParamDecorator, UnauthorizedException, type ExecutionContext } from '@nestjs/common';
+import type { AuthedRequest } from '../auth/auth.guard';
 
-/** Usuario de demo creado por el seed. */
-export const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
-
-/**
- * Id del usuario autenticado. Por ahora devuelve el usuario de demo;
- * al sumar autenticación (JWT) solo cambia esta función y los controllers quedan igual.
- */
-export const CurrentUserId = createParamDecorator((): string => DEMO_USER_ID);
+/** Id del usuario autenticado, que deja el `AuthGuard` global a partir del token. */
+export const CurrentUserId = createParamDecorator((_: unknown, context: ExecutionContext): string => {
+  const { userId } = context.switchToHttp().getRequest<AuthedRequest>();
+  if (!userId) throw new UnauthorizedException('Iniciá sesión para continuar');
+  return userId;
+});

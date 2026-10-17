@@ -2,6 +2,7 @@ import { Link, Redirect, router } from 'expo-router';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useProfile, useRoutines, useVolume } from '../api/hooks';
 import type { VolumeSummaryDto } from '../api/types';
+import { useAuth } from '../api/auth';
 import { DeloadCard, PendingChanges } from '../components/adjustments';
 import { Button, Card, ProgressBar, QueryState, styles } from '../components/ui';
 import { colors, LEVEL_LABELS, MUSCLE_LABELS, spacing, WEEKDAY_LABELS } from '../theme';
@@ -26,6 +27,7 @@ export default function HomeScreen() {
 }
 
 function Dashboard({ levelLabel }: { levelLabel: string }) {
+  const { session, signOut } = useAuth();
   const routines = useRoutines();
   const volume = useVolume();
   const refetch = () => { routines.refetch(); volume.refetch(); };
@@ -62,6 +64,7 @@ function Dashboard({ levelLabel }: { levelLabel: string }) {
           <Text style={[styles.label, { marginTop: spacing.lg }]}>Más</Text>
           <Button title="Catálogo de ejercicios" variant="ghost" onPress={() => router.push('/exercises')} />
           <Button title={`Editar perfil (${levelLabel})`} variant="ghost" onPress={() => router.push('/onboarding')} />
+          <Button title={`Cerrar sesión (${session?.user.email ?? ''})`} variant="ghost" onPress={() => void signOut()} />
         </ScrollView>
       )}
     </View>
