@@ -1,5 +1,6 @@
 import type {
-  DeloadPhase, ExerciseType, Feel, Focus, Level, Muscle, NextTarget, SetLog, Weekday, WeekPlan,
+  DeloadPhase, ExerciseType, Feel, Focus, JointPain, JointPainDecision, Level, Muscle, NextTarget, SetLog, Soreness,
+  Weekday, WeekPlan,
 } from '@gym/domain';
 
 /** Respuestas de la API (las fechas llegan como string ISO). */
@@ -87,6 +88,8 @@ export interface WorkoutDto {
     target: NextTarget;
     /** Lo que hizo la última vez (de esta rutina si existe; si no, de cualquier sesión). */
     previous: { performedAt: string; fromRoutine: boolean; sets: LoggedSet[] } | null;
+    /** Dolor articular de las últimas veces (§6.5); con `lower_weight` el objetivo ya viene con el peso bajado. */
+    pain: Exclude<JointPainDecision, { kind: 'none' }> | null;
   }[];
   /** Descarga en curso: el objetivo ya viene con las series (y en la semana de descarga, el peso) reducidos. */
   deload: { phase: DeloadPhase; endsAt: string; doneAt: string; rir: { min: number; max: number } } | null;
@@ -105,7 +108,9 @@ export interface NewSession {
   notes?: string;
   routineId?: string;
   isDeload?: boolean;
-  entries: { exerciseId: string; targetMuscle?: Muscle; sets: NewSet[] }[];
+  entries: { exerciseId: string; targetMuscle?: Muscle; jointPain?: JointPain; sets: NewSet[] }[];
+  /** Cómo llegó cada músculo desde la sesión anterior. */
+  soreness?: { muscle: Muscle; soreness: Soreness }[];
 }
 
 export interface ProfileDto {
@@ -163,7 +168,15 @@ export interface SessionReviewDto {
   volumeChanges: VolumeChangeDto[];
   pushHarder: { muscle: Muscle; reason: string }[];
   deload: DeloadDto | null;
+  /** Dolor articular: aviso, peso al que bajar o ejercicios para cambiarlo (§6.5). */
+  jointPain: JointPainReviewDto[];
 }
+
+export type JointPainReviewDto = { exerciseId: string; exerciseName: string; targetMuscle: Muscle; reason: string } & (
+  | { kind: 'warn' }
+  | { kind: 'lower_weight'; weightKg: number }
+  | { kind: 'swap'; alternatives: { id: string; name: string; type: ExerciseType }[] }
+);
 
 export interface LoggedSessionDto {
   id: string;

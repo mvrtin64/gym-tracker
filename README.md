@@ -132,10 +132,11 @@ pnpm typecheck   # todos los paquetes
 | PUT | `/exercises/:id/settings` | Anotación del usuario (ej. *"banco a 30°"*) e incremento de peso |
 | GET | `/exercises/:id/history` | Sesiones anteriores con sus series |
 | GET | `/sessions` | Últimas sesiones |
-| POST | `/sessions` | Registra una sesión (sensación o RPE → RIR por serie) y devuelve los **ajustes**: bajar series, apretar más o semana de descarga |
+| POST | `/sessions` | Registra una sesión (sensación o RPE → RIR por serie) con dolor articular y agujetas, y devuelve los **ajustes**: bajar series, apretar más, semana de descarga, bajar peso o cambiar un ejercicio que duele |
 | GET | `/routines` | Rutinas con su prescripción y la fecha de la última vez |
 | POST | `/routines` | Crea una rutina: ejercicios en orden, enfoque, series y rango |
-| GET | `/routines/:id/workout` | **Entrenamiento del día**: objetivo, anotación y última vez por ejercicio (reducido si hay descarga) |
+| GET | `/routines/:id/workout` | **Entrenamiento del día**: objetivo, anotación y última vez por ejercicio (reducido si hay descarga; con menos peso si duele) |
+| POST | `/routines/:id/exercises/:exerciseId/replace` | Cambia un ejercicio de la rutina por otro del mismo músculo (ej. porque duele) |
 
 ## Roadmap
 

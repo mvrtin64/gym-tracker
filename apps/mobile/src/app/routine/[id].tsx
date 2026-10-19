@@ -1,15 +1,18 @@
 import {
-  comparePerformance, compareSet, effortCue, FEELS, rirFromFeedback, workingSets,
-  type Feel, type NextTarget, type PerformanceComparison, type SetLog,
+  comparePerformance, compareSet, effortCue, FEELS, JOINT_PAINS, rirFromFeedback, SORENESS, workingSets,
+  type Feel, type JointPain, type Muscle, type NextTarget, type PerformanceComparison, type SetLog, type Soreness,
 } from '@gym/domain';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useLogSession, useProfile, useWorkout } from '../../api/hooks';
 import type { NewSet, SessionReviewDto, WorkoutDto } from '../../api/types';
-import { ReviewCard } from '../../components/adjustments';
+import { JointPainCard, ReviewCard } from '../../components/adjustments';
 import { Button, Card, Icon, MuscleTag, OptionGrid, Pill, QueryState, ScreenHeader, Sheet, styles } from '../../components/ui';
-import { colors, COMPARISON_UI, DECISION_UI, FEEL_LABELS, radius, spacing, WEEKDAY_LONG } from '../../theme';
+import {
+  colors, COMPARISON_UI, DECISION_UI, FEEL_LABELS, JOINT_PAIN_LABELS, MUSCLE_LABELS, radius, SORENESS_LABELS, spacing,
+  WEEKDAY_LONG,
+} from '../../theme';
 
 interface Row {
   weight: string;
@@ -25,8 +28,11 @@ interface Result {
   name: string;
   comparison: PerformanceComparison;
 }
-/** Qué hoja está abierta: el feedback de una serie o su menú. */
-type SheetState = { exerciseId: string; index: number; kind: 'feedback' | 'menu' } | null;
+/** Qué hoja está abierta: el feedback de una serie, su menú o las preguntas al terminar un músculo. */
+type SheetState = { kind: 'feedback' | 'menu'; exerciseId: string; index: number } | { kind: 'muscle'; muscle: Muscle } | null;
+
+/** Lo que tarda en bajar una hoja antes de abrir la siguiente. */
+const SHEET_SWAP_MS = 350;
 
 /** RPE que se ofrecen; con el RIR al lado para que se entienda qué significa cada uno. */
 const RPE_OPTIONS = [6, 7, 7.5, 8, 8.5, 9, 9.5, 10] as const;
@@ -66,6 +72,11 @@ export default function WorkoutScreen() {
   const logSession = useLogSession();
   const [rows, setRows] = useState<Record<string, Row[]>>({});
   const [sheet, setSheet] = useState<SheetState>(null);
+  // Feedback de dolor (§6.5): por ejercicio y por músculo, al terminar cada músculo.
+  const [pains, setPains] = useState<Record<string, JointPain>>({});
+  const [soreness, setSoreness] = useState<Partial<Record<Muscle, Soreness>>>({});
+  const [asked, setAsked] = useState<Muscle[]>([]);
+  const [pendingMuscle, setPendingMuscle] = useState<Muscle | null>(null);
   // Se congela al guardar: después la API ya devuelve la sesión de hoy como "última vez".
   const [results, setResults] = useState<{ items: Result[]; review: SessionReviewDto } | null>(null);
   const beginner = profile.data?.level === 'beginner';
@@ -86,6 +97,27 @@ export default function WorkoutScreen() {
     if (!isValid(row)) return Alert.alert('Faltan datos', 'Cargá el peso y las repeticiones de la serie.');
     updateRow(exerciseId, index, { done: true });
     setSheet({ exerciseId, index, kind: 'feedback' });
+
+    // Si con esta serie se terminó el músculo, después del feedback vienen sus preguntas.
+    const exercises = workout.data?.exercises ?? [];
+    const muscle = exercises.find((x) => x.exercise.id === exerciseId)?.targetMuscle;
+    if (!muscle || asked.includes(muscle)) return;
+    const finished = exercises
+      .filter((x) => x.targetMuscle === muscle)
+      .every((x) => (rows[x.exercise.id] ?? []).every((r, i) => r.done || (x.exercise.id === exerciseId && i === index)));
+    if (finished) {
+      setAsked((a) => [...a, muscle]);
+      setPendingMuscle(muscle);
+    }
+  };
+
+  /** Cierra el feedback de la serie y, si se terminó un músculo, abre sus preguntas. */
+  const closeFeedback = () => {
+    setSheet(null);
+    if (!pendingMuscle) return;
+    const muscle = pendingMuscle;
+    setPendingMuscle(null);
+    setTimeout(() => setSheet({ kind: 'muscle', muscle }), SHEET_SWAP_MS);
   };
 
   const save = () => {
@@ -98,7 +130,11 @@ export default function WorkoutScreen() {
       return;
     }
     logSession.mutate(
-      { routineId: id, entries: done.map((x) => ({ exerciseId: x.item.exercise.id, sets: x.sets })) },
+      {
+        routineId: id,
+        entries: done.map((x) => ({ exerciseId: x.item.exercise.id, jointPain: pains[x.item.exercise.id], sets: x.sets })),
+        soreness: Object.entries(soreness).map(([muscle, s]) => ({ muscle: muscle as Muscle, soreness: s })),
+      },
       {
         onSuccess: (session) =>
           setResults({
@@ -116,7 +152,10 @@ export default function WorkoutScreen() {
   const data = workout.data;
   // En la semana de descarga se entrena liviano a propósito: no se compara ni se pide apretar.
   const deloadWeek = data?.deload?.phase === 'deload';
-  const sheetRow = sheet ? rows[sheet.exerciseId]?.[sheet.index] : undefined;
+  const setSheetState = sheet && sheet.kind !== 'muscle' ? sheet : null;
+  const sheetRow = setSheetState ? rows[setSheetState.exerciseId]?.[setSheetState.index] : undefined;
+  const muscleSheet = sheet?.kind === 'muscle' ? sheet.muscle : null;
+  const muscleItems = data?.exercises.filter((x) => x.targetMuscle === muscleSheet) ?? [];
   const totalDone = Object.values(rows).reduce((sum, rs) => sum + rs.filter((r) => r.done).length, 0);
   const totalSets = Object.values(rows).reduce((sum, rs) => sum + rs.length, 0);
 
@@ -125,7 +164,7 @@ export default function WorkoutScreen() {
       <Stack.Screen options={{ title: '' }} />
       <QueryState isLoading={workout.isLoading} error={workout.error} onRetry={workout.refetch} />
       {results ? (
-        <Summary results={results.items} review={results.review} deloadWeek={deloadWeek} />
+        <Summary results={results.items} review={results.review} deloadWeek={deloadWeek} routineId={id} />
       ) : (
         data && (
           <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }} keyboardShouldPersistTaps="handled">
@@ -174,17 +213,17 @@ export default function WorkoutScreen() {
 
       <Sheet
         visible={sheet?.kind === 'feedback' && !!sheetRow}
-        onClose={() => setSheet(null)}
+        onClose={closeFeedback}
         title={beginner ? '¿Cómo sentiste la serie?' : '¿Qué tan dura fue? (RPE)'}
         subtitle={beginner ? 'Con esto la app sabe cuánto te quedaba.' : '10 = no podías hacer ni una más.'}>
-        {sheet && sheetRow && (beginner ? (
+        {setSheetState && sheetRow && (beginner ? (
           <OptionGrid
             options={FEELS}
             value={sheetRow.feel}
             columns={2}
             label={(f) => FEEL_LABELS[f].short}
             sublabel={(f) => FEEL_LABELS[f].long}
-            onChange={(feel) => { updateRow(sheet.exerciseId, sheet.index, { feel }); setSheet(null); }}
+            onChange={(feel) => { updateRow(setSheetState.exerciseId, setSheetState.index, { feel }); closeFeedback(); }}
           />
         ) : (
           <OptionGrid
@@ -192,24 +231,63 @@ export default function WorkoutScreen() {
             value={sheetRow.rpe}
             label={(rpe) => String(rpe)}
             sublabel={(rpe) => (rpe === 10 ? 'al fallo' : `quedaban ${10 - rpe}`)}
-            onChange={(rpe) => { updateRow(sheet.exerciseId, sheet.index, { rpe }); setSheet(null); }}
+            onChange={(rpe) => { updateRow(setSheetState.exerciseId, setSheetState.index, { rpe }); closeFeedback(); }}
           />
         ))}
       </Sheet>
 
-      <Sheet visible={sheet?.kind === 'menu'} onClose={() => setSheet(null)} title={`Serie ${(sheet?.index ?? 0) + 1}`}>
-        {sheet && (
+      <Sheet
+        visible={!!muscleSheet}
+        onClose={() => setSheet(null)}
+        title={muscleSheet ? `Terminaste ${MUSCLE_LABELS[muscleSheet].toLowerCase()}` : ''}
+        subtitle="Con esto la app cuida tus articulaciones y ajusta el volumen.">
+        {muscleSheet && (
+          <View style={{ gap: spacing.lg }}>
+            <View style={{ gap: spacing.sm }}>
+              <Text style={styles.label}>¿Te dolió alguna articulación?</Text>
+              {muscleItems.map((x) => (
+                <View key={x.exercise.id} style={{ gap: spacing.xs }}>
+                  {muscleItems.length > 1 && <Text style={styles.text}>{x.exercise.name}</Text>}
+                  <OptionGrid
+                    options={JOINT_PAINS}
+                    value={pains[x.exercise.id] ?? null}
+                    label={(p) => JOINT_PAIN_LABELS[p]}
+                    onChange={(p) => setPains((all) => ({ ...all, [x.exercise.id]: p }))}
+                  />
+                </View>
+              ))}
+            </View>
+            {/* Agujetas: solo si hay una sesión anterior de la que recuperarse. */}
+            {muscleItems.some((x) => x.previous) && (
+              <View style={{ gap: spacing.sm }}>
+                <Text style={styles.label}>¿Cómo llegaste desde la sesión anterior?</Text>
+                <OptionGrid
+                  options={SORENESS}
+                  columns={2}
+                  value={soreness[muscleSheet] ?? null}
+                  label={(s) => SORENESS_LABELS[s]}
+                  onChange={(s) => setSoreness((all) => ({ ...all, [muscleSheet]: s }))}
+                />
+              </View>
+            )}
+            <Button title="Listo" onPress={() => setSheet(null)} />
+          </View>
+        )}
+      </Sheet>
+
+      <Sheet visible={sheet?.kind === 'menu'} onClose={() => setSheet(null)} title={`Serie ${(setSheetState?.index ?? 0) + 1}`}>
+        {setSheetState && (
           <View style={{ gap: spacing.sm }}>
             <Button
               title="Agregar serie abajo"
               variant="secondary"
               onPress={() => {
                 setRows((all) => {
-                  const cur = all[sheet.exerciseId];
-                  const base = cur[sheet.index];
+                  const cur = all[setSheetState.exerciseId];
+                  const base = cur[setSheetState.index];
                   const next = [...cur];
-                  next.splice(sheet.index + 1, 0, emptyRow(base.weight, base.reps));
-                  return { ...all, [sheet.exerciseId]: next };
+                  next.splice(setSheetState.index + 1, 0, emptyRow(base.weight, base.reps));
+                  return { ...all, [setSheetState.exerciseId]: next };
                 });
                 setSheet(null);
               }}
@@ -218,7 +296,8 @@ export default function WorkoutScreen() {
               title="Borrar serie"
               variant="ghost"
               onPress={() => {
-                setRows((all) => ({ ...all, [sheet.exerciseId]: all[sheet.exerciseId].filter((_, i) => i !== sheet.index) }));
+                const { exerciseId, index } = setSheetState;
+                setRows((all) => ({ ...all, [exerciseId]: all[exerciseId].filter((_, i) => i !== index) }));
                 setSheet(null);
               }}
             />
@@ -238,7 +317,7 @@ function ExerciseBlock({ item, deloadWeek, rows, onUpdate, onToggle, onOpen, onA
   onOpen: (index: number, kind: 'feedback' | 'menu') => void;
   onAdd: () => void;
 }) {
-  const { exercise, targetMuscle, prescription, note, target, previous } = item;
+  const { exercise, targetMuscle, prescription, note, target, previous, pain } = item;
   const prevSets = previous ? workingSets(previous.sets) : [];
   const done = doneSets(rows);
   const live = comparePerformance(done, previous?.sets ?? null);
@@ -268,6 +347,8 @@ function ExerciseBlock({ item, deloadWeek, rows, onUpdate, onToggle, onOpen, onA
           {decision.label}: {target.sets}×{target.reps} @ {target.weightKg} kg
         </Text>
         <Text style={styles.muted}>{target.reason}</Text>
+        {/* Con lower_weight el aviso ya va en el objetivo, que viene con el peso bajado. */}
+        {pain && pain.kind !== 'lower_weight' && <Text style={{ color: colors.danger, fontSize: 13 }}>⚠️ {pain.reason}</Text>}
       </View>
 
       <View>
@@ -385,7 +466,12 @@ function StatusLine({ comparison }: { comparison: PerformanceComparison }) {
   );
 }
 
-function Summary({ results, review, deloadWeek }: { results: Result[]; review: SessionReviewDto; deloadWeek: boolean }) {
+function Summary({ results, review, deloadWeek, routineId }: {
+  results: Result[];
+  review: SessionReviewDto;
+  deloadWeek: boolean;
+  routineId: string;
+}) {
   const improved = results.filter((r) => r.comparison.status === 'improved').length;
   return (
     <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}>
@@ -395,6 +481,7 @@ function Summary({ results, review, deloadWeek }: { results: Result[]; review: S
       ) : (
         <Text style={styles.muted}>Progresaste en {improved} de {results.length} ejercicios respecto de la última vez.</Text>
       )}
+      <JointPainCard items={review.jointPain} routineId={routineId} />
       <ReviewCard review={review} />
       {!deloadWeek && results.map((r) => (
         <Card key={r.name} style={{ gap: spacing.xs, borderColor: COMPARISON_UI[r.comparison.status].color }}>

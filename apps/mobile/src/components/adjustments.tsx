@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import { Alert, Text, View } from 'react-native';
-import { useResolveChange, useResolveDeload } from '../api/hooks';
-import type { DeloadDto, SessionReviewDto, VolumeChangeDto } from '../api/types';
+import { useReplaceExercise, useResolveChange, useResolveDeload } from '../api/hooks';
+import type { DeloadDto, JointPainReviewDto, SessionReviewDto, VolumeChangeDto } from '../api/types';
 import { colors, MUSCLE_LABELS, spacing } from '../theme';
-import { Button, Card, styles } from './ui';
+import { Button, Card, Chips, styles } from './ui';
 
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 const sets = (n: number) => `${n} ${n === 1 ? 'serie' : 'series'}`;
@@ -66,6 +67,57 @@ export function PendingChanges({ changes }: { changes: VolumeChangeDto[] }) {
               <Button title="Descartar" variant="ghost" onPress={() => act(c.id, 'dismiss')} disabled={resolve.isPending} />
             </View>
           </View>
+        </View>
+      ))}
+    </Card>
+  );
+}
+
+/**
+ * Dolor articular al terminar el entrenamiento (§6.5): aviso la primera vez; si se repite, el peso al
+ * que bajar o con qué ejercicio cambiarlo en la rutina.
+ */
+export function JointPainCard({ items, routineId }: { items: JointPainReviewDto[]; routineId?: string }) {
+  const replace = useReplaceExercise(routineId ?? '');
+  const [replaced, setReplaced] = useState<Record<string, string>>({});
+  if (items.length === 0) return null;
+
+  const swap = (exerciseId: string, alt: { id: string; name: string }) =>
+    replace.mutate(
+      { exerciseId, replacementId: alt.id },
+      {
+        onSuccess: () => setReplaced((r) => ({ ...r, [exerciseId]: alt.name })),
+        onError: (e) => Alert.alert('No se pudo cambiar', e.message),
+      },
+    );
+
+  return (
+    <Card style={{ gap: spacing.md, borderColor: colors.danger }}>
+      <Text style={styles.title}>Dolor articular</Text>
+      {items.map((p) => (
+        <View key={p.exerciseId} style={{ gap: spacing.xs }}>
+          <Text style={styles.text}>
+            {p.kind === 'warn' && `⚠️ ${p.exerciseName}: revisá la técnica`}
+            {p.kind === 'lower_weight' && `↓ ${p.exerciseName}: la próxima, ${p.weightKg} kg`}
+            {p.kind === 'swap' && `🔁 ${p.exerciseName}: cambialo`}
+          </Text>
+          <Text style={styles.muted}>{p.reason}</Text>
+          {p.kind === 'swap' && routineId && (replaced[p.exerciseId] ? (
+            <Text style={{ color: colors.success, fontWeight: '600' }}>✓ En la rutina ahora va {replaced[p.exerciseId]}.</Text>
+          ) : p.alternatives.length === 0 ? (
+            <Text style={styles.muted}>No hay otro ejercicio de {MUSCLE_LABELS[p.targetMuscle]} en el catálogo: creá uno en Ejercicios.</Text>
+          ) : (
+            <Chips
+              small
+              options={p.alternatives.map((a) => a.id)}
+              labels={Object.fromEntries(p.alternatives.map((a) => [a.id, a.name]))}
+              value={null}
+              onChange={(id) => {
+                const alt = p.alternatives.find((a) => a.id === id);
+                if (alt && !replace.isPending) swap(p.exerciseId, alt);
+              }}
+            />
+          ))}
         </View>
       ))}
     </Card>

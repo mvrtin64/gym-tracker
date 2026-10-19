@@ -1,4 +1,4 @@
-import { FEELS, MUSCLES, type Feel, type Muscle } from '@gym/domain';
+import { FEELS, JOINT_PAINS, MUSCLES, SORENESS, type Feel, type JointPain, type Muscle, type Soreness } from '@gym/domain';
 import { Type } from 'class-transformer';
 import {
   ArrayMinSize, IsBoolean, IsDateString, IsIn, IsInt, IsNumber, IsOptional, IsString, IsUUID, Max, Min, ValidateNested,
@@ -31,10 +31,23 @@ export class EntryDto {
   @IsOptional() @IsIn(MUSCLES)
   targetMuscle?: Muscle;
 
+  /** Dolor articular que marcó al terminar el músculo (§6.5). */
+  @IsOptional() @IsIn(JOINT_PAINS)
+  jointPain?: JointPain;
+
   @ValidateNested({ each: true })
   @Type(() => SetDto)
   @ArrayMinSize(1)
   sets: SetDto[];
+}
+
+/** Cómo llegó un músculo a esta sesión desde la anterior (§6.5). */
+export class SorenessDto {
+  @IsIn(MUSCLES)
+  muscle: Muscle;
+
+  @IsIn(SORENESS)
+  soreness: Soreness;
 }
 
 export class CreateSessionDto {
@@ -51,6 +64,10 @@ export class CreateSessionDto {
   /** Semana de descarga. */
   @IsOptional() @IsBoolean()
   isDeload?: boolean;
+
+  @IsOptional() @ValidateNested({ each: true })
+  @Type(() => SorenessDto)
+  soreness?: SorenessDto[];
 
   @ValidateNested({ each: true })
   @Type(() => EntryDto)

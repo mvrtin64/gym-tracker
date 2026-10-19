@@ -1,5 +1,5 @@
 import type {
-  ComparisonStatus, DayKind, ExerciseType, Feel, Focus, Level, Muscle, ProgressionDecision, Weekday,
+  ComparisonStatus, DayKind, ExerciseType, Feel, Focus, JointPain, Level, Muscle, ProgressionDecision, Soreness, Weekday,
 } from '@gym/domain';
 
 /**
@@ -100,6 +100,20 @@ export const FEEL_LABELS: Record<Feel, { short: string; long: string }> = {
   one_two_left: { short: '1-2 más', long: 'Me quedaban 1 o 2' },
   several_left: { short: 'Varias más', long: 'Me quedaban varias' },
   very_easy: { short: 'Muy fácil', long: 'Muy fácil, me sobraba mucho' },
+};
+
+export const JOINT_PAIN_LABELS: Record<JointPain, string> = {
+  none: 'Nada',
+  mild: 'Leve',
+  moderate: 'Moderado',
+  severe: 'Mucho',
+};
+
+export const SORENESS_LABELS: Record<Soreness, string> = {
+  never_sore: 'Nunca me dolió',
+  healed_early: 'Sanó hace rato',
+  healed_just_in_time: 'Sanó justo a tiempo',
+  still_sore: 'Todavía me duele',
 };
 
 export const COMPARISON_UI: Record<ComparisonStatus, { label: string; color: string }> = {
