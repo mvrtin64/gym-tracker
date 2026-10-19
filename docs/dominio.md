@@ -78,6 +78,44 @@ El usuario **siempre** puede sumar o restar series; la lógica de sobrecarga se 
 - **Series que sobran** al dividir el volumen entre días van al **día de énfasis** del músculo; si el
   reparto en 3 días queda forzado, se usa **frecuencia 2** directamente.
 
+### 3.4 Selección de ejercicios en rutinas generadas ✅
+
+El intermedio / avanzado normalmente arma sus propias rutinas. Cuando le pide a la app que se la
+arme:
+
+- **2 o 3 ejercicios por músculo** en la sesión, según las series que le tocan ese día (§3.3). Con
+  pocas series (3 o menos), **un solo ejercicio**: el usuario siempre puede sumar series o ejercicios.
+- **Primero multiarticulares, después aislamiento.**
+- Cada ejercicio se puede **cambiar** por otro del catálogo o por uno **propio** que no esté cargado,
+  por si no le gusta o no le resulta cómodo. Siempre aparecen variantes nuevas (face pull en polea,
+  jalón unilateral, sentadilla hack…): el catálogo no intenta tenerlas todas, sino dejar cargarlas.
+  Mientras tengan su progresión, funcionan igual que las del catálogo.
+- Si un músculo se entrena **dos días**, la app pone los mismos ejercicios; **repetir o cambiar es a
+  gusto del usuario**, que puede cambiar cualquiera por otro similar.
+- **Pecho:** ejercicios con **leve inclinación**, para trabajar el pecho completo con énfasis en el
+  pectoral superior. Ej.: press inclinado con mancuernas o con barra (a elección) + pec fly.
+
+**Principiante:** tocar **todos los músculos**, priorizando **multiarticulares** que cubran varios a
+la vez (§8).
+
+**Orden por músculo** (validado por el coach; entran los primeros según la cantidad de ejercicios):
+
+| Músculo | Multiarticular | Aislamiento |
+|---|---|---|
+| Pecho | Press inclinado con mancuernas · con barra | Pec deck · Aperturas en polea |
+| Hombro frontal | Press militar | Elevaciones frontales |
+| Hombro lateral | — | Elevaciones laterales · en polea |
+| Hombro posterior | — | Pájaros · Face pull |
+| Dorsal | Jalón al pecho o dominadas · Remo a una mano | Pullover en polea |
+| Espalda alta | Remo con barra · Remo sentado en polea | Face pull |
+| Bíceps | — | Curl con barra · Curl con mancuernas · Curl martillo |
+| Tríceps | — | Extensión sobre la cabeza · Extensión en polea · Press francés |
+| Cuádriceps | Sentadilla · Prensa | Extensión de cuádriceps |
+| Femoral | Peso muerto rumano | Curl femoral sentado · acostado |
+| Glúteo | Hip thrust · Sentadilla búlgara | Patada en polea · Abducción |
+| Gemelos | — | Elevación de talones de pie · sentado |
+| Abdominales | — | Crunch en polea · Elevación de piernas colgado |
+
 ## 4. Ejercicios
 
 ### 4.1 Músculo objetivo 🔜
@@ -278,6 +316,12 @@ Detalles que las reglas no fijaban y se resolvieron en `packages/domain`. Son f�
 | Cuánto bajar el peso por dolor | −10%, como la descarga de un ejercicio (§6.1), redondeado al incremento | `feedback/pain.ts` |
 | Agujetas en el primer entrenamiento de un músculo | No se pregunta: no hay sesión anterior | app |
 | "Todavía me duele" seguidas | Cuentan las respuestas de ese músculo una detrás de otra; cualquier otra respuesta en el medio corta la racha | `feedback/soreness.ts` |
+| Cuántos multiarticulares | 1 ejercicio → el multiarticular; 2 → 1 multiarticular + 1 aislamiento; 3 → 2 + 1. Si un músculo no tiene de un tipo, se completa con el otro | `planning/selection.ts` |
+| Más de 3 ejercicios | Nunca: las series que sobran se reparten (10 = 4 + 3 + 3) | `planning/planner.ts` |
+| Faltan recomendados | Se completa con el resto del catálogo que cuente para el músculo; si tampoco hay, se reparten las series en los que haya | `planning/selection.ts` |
+| Mismo ejercicio para dos músculos el mismo día | No se repite (ej. face pull va a hombro posterior o a espalda alta, no a los dos) | `planning/selection.ts` |
+| Volver a generar | Reemplaza las rutinas generadas antes; las propias no se tocan | `apps/api/src/routines/routines.service.ts` |
+| Rango de reps y modo de las generadas | El rango por defecto del tipo de ejercicio; ajustes automáticos | `apps/api/src/routines/routines.service.ts` |
 | Agujetas y estancamiento a la vez | Se suman en un solo cambio de ese músculo, con el mismo máximo de −2 series | `apps/api/src/volume/adjustments.service.ts` |
 
 ## 8. Pendientes ❓
@@ -288,4 +332,6 @@ Detalles que las reglas no fijaban y se resolvieron en `packages/domain`. Son f�
   músculo (depende del catálogo).
   - **Principiante** (definido por el coach): tocar **todos los músculos**, priorizando
     **multiarticulares** que cubran varios a la vez.
-  - Falta definir: intermedio / avanzado, y cómo se elige entre varios multiarticulares posibles.
+  - **Intermedio / avanzado** (definido por el coach): ver §3.4.
+  - Falta: el principiante usa por ahora el mismo orden (multiarticulares primero); queda pendiente
+    elegir multiarticulares que cubran **varios músculos a la vez** para acortar la sesión.

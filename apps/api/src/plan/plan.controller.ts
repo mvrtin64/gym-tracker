@@ -13,7 +13,7 @@ export class PlanController {
 
   /**
    * Vista previa de la semana: músculos y series de cada día según el perfil y el volumen actual.
-   * Todavía no elige ejercicios (pendiente en docs/dominio.md §8).
+   * Los ejercicios los elige `POST /routines/generate` (docs/dominio.md §3.4).
    */
   @Get()
   async preview(@CurrentUserId() userId: string) {

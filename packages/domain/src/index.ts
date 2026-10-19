@@ -13,3 +13,4 @@ export * from './volume/adjustment';
 export * from './volume/history';
 export * from './volume/deload';
 export * from './planning/planner';
+export * from './planning/selection';

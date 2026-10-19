@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { CurrentUserId } from '../common/current-user.decorator';
-import { CreateRoutineDto } from './dto/create-routine.dto';
+import { CreateRoutineDto, RoutineExerciseDto } from './dto/create-routine.dto';
 import { ReplaceExerciseDto } from './dto/replace-exercise.dto';
 import { RoutinesService } from './routines.service';
 
@@ -16,6 +16,26 @@ export class RoutinesController {
   @Post()
   create(@CurrentUserId() userId: string, @Body() dto: CreateRoutineDto) {
     return this.routines.create(userId, dto);
+  }
+
+  /** Arma las rutinas de la semana desde el plan (reemplaza las generadas antes). */
+  @Post('generate')
+  generate(@CurrentUserId() userId: string) {
+    return this.routines.generate(userId);
+  }
+
+  @Post(':id/exercises')
+  addExercise(@CurrentUserId() userId: string, @Param('id', ParseUUIDPipe) id: string, @Body() dto: RoutineExerciseDto) {
+    return this.routines.addExercise(userId, id, dto);
+  }
+
+  @Get(':id/exercises/:exerciseId/alternatives')
+  alternatives(
+    @CurrentUserId() userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('exerciseId', ParseUUIDPipe) exerciseId: string,
+  ) {
+    return this.routines.alternatives(userId, id, exerciseId);
   }
 
   @Post(':id/exercises/:exerciseId/replace')

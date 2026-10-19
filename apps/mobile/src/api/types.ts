@@ -172,10 +172,17 @@ export interface SessionReviewDto {
   jointPain: JointPainReviewDto[];
 }
 
+/** Ejercicio para cambiar uno de la rutina. */
+export interface AlternativeDto {
+  id: string;
+  name: string;
+  type: ExerciseType;
+}
+
 export type JointPainReviewDto = { exerciseId: string; exerciseName: string; targetMuscle: Muscle; reason: string } & (
   | { kind: 'warn' }
   | { kind: 'lower_weight'; weightKg: number }
-  | { kind: 'swap'; alternatives: { id: string; name: string; type: ExerciseType }[] }
+  | { kind: 'swap'; alternatives: AlternativeDto[] }
 );
 
 export interface LoggedSessionDto {

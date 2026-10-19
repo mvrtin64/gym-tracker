@@ -1,14 +1,18 @@
 import {
-  comparePerformance, compareSet, effortCue, FEELS, JOINT_PAINS, rirFromFeedback, SORENESS, workingSets,
+  comparePerformance, compareSet, effortCue, FEELS, JOINT_PAINS, MUSCLES, rirFromFeedback, SORENESS, workingSets,
   type Feel, type JointPain, type Muscle, type NextTarget, type PerformanceComparison, type SetLog, type Soreness,
 } from '@gym/domain';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { useLogSession, useProfile, useWorkout } from '../../api/hooks';
+import {
+  useAddRoutineExercise, useAlternatives, useExercises, useLogSession, useProfile, useReplaceExercise, useWorkout,
+} from '../../api/hooks';
 import type { NewSet, SessionReviewDto, WorkoutDto } from '../../api/types';
 import { JointPainCard, ReviewCard } from '../../components/adjustments';
-import { Button, Card, Icon, MuscleTag, OptionGrid, Pill, QueryState, ScreenHeader, Sheet, styles } from '../../components/ui';
+import {
+  Button, Card, Chips, Icon, MuscleTag, OptionGrid, Pill, QueryState, ScreenHeader, Sheet, styles,
+} from '../../components/ui';
 import {
   colors, COMPARISON_UI, DECISION_UI, FEEL_LABELS, JOINT_PAIN_LABELS, MUSCLE_LABELS, radius, SORENESS_LABELS, spacing,
   WEEKDAY_LONG,
@@ -28,8 +32,16 @@ interface Result {
   name: string;
   comparison: PerformanceComparison;
 }
-/** Qué hoja está abierta: el feedback de una serie, su menú o las preguntas al terminar un músculo. */
-type SheetState = { kind: 'feedback' | 'menu'; exerciseId: string; index: number } | { kind: 'muscle'; muscle: Muscle } | null;
+/**
+ * Qué hoja está abierta: el feedback de una serie, su menú, las preguntas al terminar un músculo,
+ * cambiar un ejercicio o agregar uno.
+ */
+type SheetState =
+  | { kind: 'feedback' | 'menu'; exerciseId: string; index: number }
+  | { kind: 'muscle'; muscle: Muscle }
+  | { kind: 'swap'; exerciseId: string }
+  | { kind: 'add' }
+  | null;
 
 /** Lo que tarda en bajar una hoja antes de abrir la siguiente. */
 const SHEET_SWAP_MS = 350;
@@ -82,8 +94,10 @@ export default function WorkoutScreen() {
   const beginner = profile.data?.level === 'beginner';
 
   useEffect(() => {
+    // Al cambiar o agregar un ejercicio la rutina se recarga: lo ya cargado de los demás se conserva.
     if (workout.data) {
-      setRows(Object.fromEntries(workout.data.exercises.map((x) => [x.exercise.id, rowsFrom(x.target)])));
+      const exercises = workout.data.exercises;
+      setRows((prev) => Object.fromEntries(exercises.map((x) => [x.exercise.id, prev[x.exercise.id] ?? rowsFrom(x.target)])));
     }
   }, [workout.data]);
 
@@ -152,7 +166,7 @@ export default function WorkoutScreen() {
   const data = workout.data;
   // En la semana de descarga se entrena liviano a propósito: no se compara ni se pide apretar.
   const deloadWeek = data?.deload?.phase === 'deload';
-  const setSheetState = sheet && sheet.kind !== 'muscle' ? sheet : null;
+  const setSheetState = sheet?.kind === 'feedback' || sheet?.kind === 'menu' ? sheet : null;
   const sheetRow = setSheetState ? rows[setSheetState.exerciseId]?.[setSheetState.index] : undefined;
   const muscleSheet = sheet?.kind === 'muscle' ? sheet.muscle : null;
   const muscleItems = data?.exercises.filter((x) => x.targetMuscle === muscleSheet) ?? [];
@@ -197,6 +211,7 @@ export default function WorkoutScreen() {
                 onUpdate={(index, patch) => updateRow(x.exercise.id, index, patch)}
                 onToggle={(index) => toggleDone(x.exercise.id, index)}
                 onOpen={(index, kind) => setSheet({ exerciseId: x.exercise.id, index, kind })}
+                onSwap={() => setSheet({ kind: 'swap', exerciseId: x.exercise.id })}
                 onAdd={() =>
                   setRows((all) => {
                     const cur = all[x.exercise.id];
@@ -206,6 +221,7 @@ export default function WorkoutScreen() {
                 }
               />
             ))}
+            <Button title="Agregar ejercicio" variant="secondary" onPress={() => setSheet({ kind: 'add' })} />
             <Button title={logSession.isPending ? 'Guardando…' : 'Terminar entrenamiento'} onPress={save} disabled={logSession.isPending} />
           </ScrollView>
         )
@@ -275,6 +291,18 @@ export default function WorkoutScreen() {
         )}
       </Sheet>
 
+      <SwapSheet
+        routineId={id}
+        item={sheet?.kind === 'swap' ? data?.exercises.find((x) => x.exercise.id === sheet.exerciseId) ?? null : null}
+        onClose={() => setSheet(null)}
+      />
+      <AddSheet
+        routineId={id}
+        visible={sheet?.kind === 'add'}
+        inRoutine={data?.exercises.map((x) => x.exercise.id) ?? []}
+        onClose={() => setSheet(null)}
+      />
+
       <Sheet visible={sheet?.kind === 'menu'} onClose={() => setSheet(null)} title={`Serie ${(setSheetState?.index ?? 0) + 1}`}>
         {setSheetState && (
           <View style={{ gap: spacing.sm }}>
@@ -308,7 +336,102 @@ export default function WorkoutScreen() {
   );
 }
 
-function ExerciseBlock({ item, deloadWeek, rows, onUpdate, onToggle, onOpen, onAdd }: {
+/** Ir a crear un ejercicio propio: para variantes que no están en el catálogo. */
+const createOwn = (close: () => void) => {
+  close();
+  router.push('/new-exercise');
+};
+
+/** Cambiar un ejercicio de la rutina por otro del mismo músculo, o por uno propio. */
+function SwapSheet({ routineId, item, onClose }: { routineId: string; item: WorkoutItem | null; onClose: () => void }) {
+  const alternatives = useAlternatives(routineId, item?.exercise.id ?? null);
+  const replace = useReplaceExercise(routineId);
+  const options = alternatives.data ?? [];
+
+  const swap = (replacementId: string) => {
+    if (!item || replace.isPending) return;
+    replace.mutate(
+      { exerciseId: item.exercise.id, replacementId },
+      { onSuccess: onClose, onError: (e) => Alert.alert('No se pudo cambiar', e.message) },
+    );
+  };
+
+  return (
+    <Sheet
+      visible={!!item}
+      onClose={onClose}
+      title={item ? `Cambiar ${item.exercise.name}` : ''}
+      subtitle={item ? `Por otro de ${MUSCLE_LABELS[item.targetMuscle].toLowerCase()}. Queda cambiado en la rutina.` : undefined}>
+      <ScrollView style={{ maxHeight: 360 }} contentContainerStyle={{ gap: spacing.md }}>
+        {alternatives.isLoading && <Text style={styles.muted}>Buscando…</Text>}
+        {!alternatives.isLoading && options.length === 0 && (
+          <Text style={styles.muted}>No hay otro ejercicio de este músculo en el catálogo.</Text>
+        )}
+        {options.length > 0 && (
+          <Chips
+            options={options.map((o) => o.id)}
+            labels={Object.fromEntries(options.map((o) => [o.id, o.name]))}
+            value={null}
+            onChange={(id) => id && swap(id)}
+          />
+        )}
+        <Button title="Crear ejercicio propio" variant="ghost" onPress={() => createOwn(onClose)} />
+      </ScrollView>
+    </Sheet>
+  );
+}
+
+/** Sumar un ejercicio a la rutina: primero el músculo, después el ejercicio. */
+function AddSheet({ routineId, visible, inRoutine, onClose }: {
+  routineId: string;
+  visible: boolean;
+  inRoutine: string[];
+  onClose: () => void;
+}) {
+  const exercises = useExercises();
+  const add = useAddRoutineExercise(routineId);
+  const [muscle, setMuscle] = useState<Muscle | null>(null);
+  const options = (exercises.data ?? []).filter((e) => muscle && e.targetMuscles.includes(muscle) && !inRoutine.includes(e.id));
+
+  const close = () => {
+    setMuscle(null);
+    onClose();
+  };
+  const pick = (exerciseId: string) => {
+    if (!muscle || add.isPending) return;
+    add.mutate(
+      { exerciseId, targetMuscle: muscle },
+      { onSuccess: close, onError: (e) => Alert.alert('No se pudo agregar', e.message) },
+    );
+  };
+
+  return (
+    <Sheet visible={visible} onClose={close} title="Agregar ejercicio" subtitle="Queda sumado a la rutina.">
+      <ScrollView style={{ maxHeight: 420 }} contentContainerStyle={{ gap: spacing.md }}>
+        <Text style={styles.label}>Músculo</Text>
+        <Chips small options={MUSCLES} labels={MUSCLE_LABELS} value={muscle} onChange={setMuscle} />
+        {muscle && (
+          <>
+            <Text style={styles.label}>Ejercicio</Text>
+            {options.length === 0 ? (
+              <Text style={styles.muted}>No queda ningún ejercicio de este músculo fuera de la rutina.</Text>
+            ) : (
+              <Chips
+                options={options.map((o) => o.id)}
+                labels={Object.fromEntries(options.map((o) => [o.id, o.name]))}
+                value={null}
+                onChange={(id) => id && pick(id)}
+              />
+            )}
+          </>
+        )}
+        <Button title="Crear ejercicio propio" variant="ghost" onPress={() => createOwn(close)} />
+      </ScrollView>
+    </Sheet>
+  );
+}
+
+function ExerciseBlock({ item, deloadWeek, rows, onUpdate, onToggle, onOpen, onAdd, onSwap }: {
   item: WorkoutItem;
   deloadWeek: boolean;
   rows: Row[];
@@ -316,6 +439,7 @@ function ExerciseBlock({ item, deloadWeek, rows, onUpdate, onToggle, onOpen, onA
   onToggle: (index: number) => void;
   onOpen: (index: number, kind: 'feedback' | 'menu') => void;
   onAdd: () => void;
+  onSwap: () => void;
 }) {
   const { exercise, targetMuscle, prescription, note, target, previous, pain } = item;
   const prevSets = previous ? workingSets(previous.sets) : [];
@@ -328,11 +452,16 @@ function ExerciseBlock({ item, deloadWeek, rows, onUpdate, onToggle, onOpen, onA
       <View style={{ gap: spacing.xs }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <MuscleTag muscle={targetMuscle} />
-          {exercise.demoUrl && (
-            <Pressable onPress={() => Linking.openURL(exercise.demoUrl!).catch(() => Alert.alert('No se pudo abrir la demostración'))}>
-              <Text style={{ color: colors.accent, fontWeight: '600' }}>▶ Demo</Text>
+          <View style={{ flexDirection: 'row', gap: spacing.md }}>
+            {exercise.demoUrl && (
+              <Pressable onPress={() => Linking.openURL(exercise.demoUrl!).catch(() => Alert.alert('No se pudo abrir la demostración'))}>
+                <Text style={{ color: colors.accent, fontWeight: '600' }}>▶ Demo</Text>
+              </Pressable>
+            )}
+            <Pressable onPress={onSwap} hitSlop={8}>
+              <Text style={{ color: colors.accent, fontWeight: '600' }}>⇄ Cambiar</Text>
             </Pressable>
-          )}
+          </View>
         </View>
         <Text style={styles.title}>{exercise.name}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
