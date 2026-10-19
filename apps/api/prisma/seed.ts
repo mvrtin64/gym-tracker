@@ -29,7 +29,9 @@ const CATALOG: CatalogItem[] = [
   // Pecho
   c('Press banca', 'chest'),
   c('Press inclinado con mancuernas', 'chest'),
+  c('Press inclinado con barra', 'chest'),
   c('Fondos en paralelas', 'chest', 'triceps'),
+  i('Pec deck', 'chest'),
   i('Aperturas en polea', 'chest'),
   // Hombro
   c('Press militar', 'front_delt'),

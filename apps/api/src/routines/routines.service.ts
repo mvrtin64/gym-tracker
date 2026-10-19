@@ -1,4 +1,6 @@
-import { DELOAD_WEEK, deloadWeight, painWeight, scaleSets, workingSets } from '@gym/domain';
+import {
+  DELOAD_WEEK, deloadWeight, generateRoutines, painWeight, planWeek, scaleSets, workingSets, type DayKind, type Weekday,
+} from '@gym/domain';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { definedOnly } from '../common/objects';
 import { toSetLog } from '../common/set-log';
@@ -6,9 +8,16 @@ import { defaultPrescription, defaultSettings, pickSettings, visibleTo } from '.
 import { ExercisesService } from '../exercises/exercises.service';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { ProfileService } from '../profile/profile.service';
 import { ProgressionService } from '../progression/progression.service';
 import { VolumeService } from '../volume/volume.service';
-import { CreateRoutineDto } from './dto/create-routine.dto';
+import { CreateRoutineDto, RoutineExerciseDto } from './dto/create-routine.dto';
+
+/** Nombres de las rutinas generadas: "Lunes · Tren inferior". */
+const WEEKDAY_NAMES: Record<Weekday, string> = {
+  mon: 'Lunes', tue: 'Martes', wed: 'Miércoles', thu: 'Jueves', fri: 'Viernes', sat: 'Sábado', sun: 'Domingo',
+};
+const DAY_KIND_NAMES: Record<DayKind, string> = { full: 'Cuerpo completo', upper: 'Tren superior', lower: 'Tren inferior' };
 
 const withExercises = (userId: string) =>
   ({
@@ -25,12 +34,14 @@ export class RoutinesService {
     private readonly exercises: ExercisesService,
     private readonly progression: ProgressionService,
     private readonly volume: VolumeService,
+    private readonly profile: ProfileService,
   ) {}
 
   async list(userId: string) {
     const routines = await this.prisma.routine.findMany({
       where: { userId },
-      orderBy: { name: 'asc' },
+      // Por día de la semana (el enum de Postgres ordena lun → dom; sin día, al final).
+      orderBy: [{ weekday: 'asc' }, { name: 'asc' }],
       include: {
         exercises: { orderBy: { position: 'asc' }, include: { exercise: true } },
         sessions: { orderBy: { performedAt: 'desc' }, take: 1, select: { performedAt: true } },
@@ -81,6 +92,91 @@ export class RoutinesService {
       }
       throw e;
     }
+  }
+
+  /**
+   * Arma las rutinas de la semana desde el plan (docs/dominio.md §3.4): una por día de
+   * entrenamiento, con los ejercicios recomendados y ajustes automáticos. Reemplaza las rutinas que
+   * se habían generado antes; las propias no se tocan.
+   */
+  async generate(userId: string) {
+    const [profile, volume, catalog] = await Promise.all([
+      this.profile.getDomain(userId),
+      this.volume.current(userId),
+      this.prisma.exercise.findMany({ where: visibleTo(userId) }),
+    ]);
+    const byId = new Map(catalog.map((e) => [e.id, e]));
+    const generated = generateRoutines(planWeek(profile, volume), catalog);
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.routine.deleteMany({ where: { userId, origin: 'generated' } });
+        for (const routine of generated) {
+          await tx.routine.create({
+            data: {
+              userId,
+              name: `${WEEKDAY_NAMES[routine.weekday]} · ${DAY_KIND_NAMES[routine.kind]}`,
+              origin: 'generated',
+              adjustMode: 'auto',
+              weekday: routine.weekday,
+              exercises: {
+                create: routine.exercises.map((e, position) => ({
+                  exerciseId: e.exerciseId,
+                  position,
+                  targetMuscle: e.muscle,
+                  ...defaultPrescription(byId.get(e.exerciseId)!.type),
+                  sets: e.sets,
+                })),
+              },
+            },
+          });
+        }
+      });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        throw new ConflictException('Ya tenés una rutina propia con el nombre de un día: renombrala o borrala primero');
+      }
+      throw e;
+    }
+    return this.list(userId);
+  }
+
+  /** Suma un ejercicio al final de la rutina (el usuario siempre puede agregar más). */
+  async addExercise(userId: string, id: string, item: RoutineExerciseDto) {
+    const routine = await this.prisma.routine.findFirst({ where: { id, userId }, include: { exercises: true } });
+    if (!routine) throw new NotFoundException('Rutina no encontrada');
+    if (routine.exercises.some((e) => e.exerciseId === item.exerciseId)) {
+      throw new ConflictException('Ese ejercicio ya está en la rutina');
+    }
+    const exercise = await this.prisma.exercise.findFirst({ where: { id: item.exerciseId, ...visibleTo(userId) } });
+    if (!exercise) throw new BadRequestException('El ejercicio no existe');
+    const targetMuscle = item.targetMuscle ?? exercise.defaultTarget;
+    if (!exercise.targetMuscles.includes(targetMuscle)) {
+      throw new BadRequestException(`"${exercise.name}" no puede contar para ${targetMuscle}`);
+    }
+    const prescription = {
+      ...defaultPrescription(exercise.type),
+      ...definedOnly({ sets: item.sets, repMin: item.repMin, repMax: item.repMax }),
+    };
+    if (prescription.repMax < prescription.repMin) throw new BadRequestException('Rango de repeticiones inválido');
+    const position = Math.max(-1, ...routine.exercises.map((e) => e.position)) + 1;
+    return this.prisma.routineExercise.create({
+      data: { routineId: id, exerciseId: exercise.id, position, targetMuscle, ...prescription },
+      include: { exercise: true },
+    });
+  }
+
+  /** Ejercicios para cambiar uno de la rutina: los del mismo músculo, primero los del mismo tipo. */
+  async alternatives(userId: string, id: string, exerciseId: string) {
+    const routine = await this.prisma.routine.findFirst({
+      where: { id, userId },
+      include: { exercises: { include: { exercise: true } } },
+    });
+    const current = routine?.exercises.find((e) => e.exerciseId === exerciseId);
+    if (!routine || !current) throw new NotFoundException('El ejercicio no está en la rutina');
+    const options = await this.exercises.alternatives(userId, current.targetMuscle, routine.exercises.map((e) => e.exerciseId));
+    const sameType = (t: string) => Number(t !== current.exercise.type);
+    return options.sort((a, b) => sameType(a.type) - sameType(b.type));
   }
 
   /**

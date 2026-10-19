@@ -2,7 +2,7 @@ import type { Muscle } from '@gym/domain';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from './client';
 import type {
-  ExerciseDto, ExerciseSettingsDto, HistoryItemDto, LoggedSessionDto, NewExercise, NewRoutine, NewSession, PlanDto,
+  AlternativeDto, ExerciseDto, ExerciseSettingsDto, HistoryItemDto, LoggedSessionDto, NewExercise, NewRoutine, NewSession, PlanDto,
   ProfileDto, ProfileInput, RoutineDto, VolumeSummaryDto, WorkoutDto,
 } from './types';
 
@@ -92,6 +92,33 @@ export function useCreateRoutine() {
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.routines }),
   });
 }
+
+/** Arma las rutinas de la semana desde el plan; reemplaza las generadas antes. */
+export function useGenerateRoutines() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<RoutineDto[]>('/routines/generate', { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.routines }),
+  });
+}
+
+/** Suma un ejercicio al final de la rutina. */
+export function useAddRoutineExercise(routineId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { exerciseId: string; targetMuscle: Muscle }) =>
+      api(`/routines/${routineId}/exercises`, { method: 'POST', body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.routines }),
+  });
+}
+
+/** Ejercicios del mismo músculo para cambiar uno de la rutina; se refresca al crear uno propio. */
+export const useAlternatives = (routineId: string, exerciseId: string | null) =>
+  useQuery({
+    queryKey: [...keys.exercises, 'alternatives', routineId, exerciseId] as const,
+    queryFn: () => api<AlternativeDto[]>(`/routines/${routineId}/exercises/${exerciseId}/alternatives`),
+    enabled: exerciseId !== null,
+  });
 
 /** Cambia un ejercicio de la rutina por otro del mismo músculo (ej. porque duele). */
 export function useReplaceExercise(routineId: string) {

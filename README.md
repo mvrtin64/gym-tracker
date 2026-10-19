@@ -136,6 +136,9 @@ pnpm typecheck   # todos los paquetes
 | GET | `/routines` | Rutinas con su prescripción y la fecha de la última vez |
 | POST | `/routines` | Crea una rutina: ejercicios en orden, enfoque, series y rango |
 | GET | `/routines/:id/workout` | **Entrenamiento del día**: objetivo, anotación y última vez por ejercicio (reducido si hay descarga; con menos peso si duele) |
+| POST | `/routines/generate` | **Arma las rutinas de la semana** desde el plan: 1 a 3 ejercicios por músculo, multiarticulares primero |
+| POST | `/routines/:id/exercises` | Suma un ejercicio a la rutina |
+| GET | `/routines/:id/exercises/:exerciseId/alternatives` | Ejercicios del mismo músculo para cambiar uno |
 | POST | `/routines/:id/exercises/:exerciseId/replace` | Cambia un ejercicio de la rutina por otro del mismo músculo (ej. porque duele) |
 
 ## Roadmap

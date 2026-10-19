@@ -35,6 +35,8 @@ export const BASE_FREQUENCY = 2;
 export const PRIORITY_FREQUENCY = 3;
 export const BASE_SETS_PER_EXERCISE = 3;
 export const MIN_SETS_PER_EXERCISE = 2;
+/** Ejercicios por músculo en una sesión generada (§3.4): de 1 a 3. */
+export const MAX_EXERCISES_PER_MUSCLE = 3;
 
 const dayIndex = (d: Weekday) => WEEKDAYS.indexOf(d);
 
@@ -74,11 +76,11 @@ export function splitEvenly(total: number, parts: number): number[] {
 
 /**
  * Las series de un músculo en un día no son un solo ejercicio: se reparten en ejercicios de ~3
- * series (entre 2 y 4). 5 = 3 + 2; 6 = 3 + 3; 7 = 3 + 2 + 2.
+ * series (entre 2 y 4). 5 = 3 + 2; 6 = 3 + 3; 7 = 3 + 2 + 2. Nunca más de 3 ejercicios: 10 = 4 + 3 + 3.
  */
 export function splitIntoExercises(sets: number): number[] {
   if (sets <= 0) return [];
-  return splitEvenly(sets, Math.ceil(sets / BASE_SETS_PER_EXERCISE));
+  return splitEvenly(sets, Math.min(MAX_EXERCISES_PER_MUSCLE, Math.ceil(sets / BASE_SETS_PER_EXERCISE)));
 }
 
 function combinations(n: number, k: number): number[][] {

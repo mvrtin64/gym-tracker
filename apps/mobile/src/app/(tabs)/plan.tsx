@@ -1,6 +1,7 @@
-import { ScrollView, Text, View } from 'react-native';
-import { usePlan } from '../../api/hooks';
-import { Card, QueryState, styles } from '../../components/ui';
+import { router } from 'expo-router';
+import { Alert, ScrollView, Text, View } from 'react-native';
+import { useGenerateRoutines, usePlan, useRoutines } from '../../api/hooks';
+import { Button, Card, QueryState, styles } from '../../components/ui';
 import { colors, DAY_KIND_LABELS, MUSCLE_LABELS, spacing, WEEKDAY_LONG } from '../../theme';
 
 /** Vista previa de la semana: músculos y series de cada día según el perfil y el volumen. */
@@ -41,8 +42,44 @@ export default function PlanScreen() {
               ))}
             </Card>
           )}
+          <GenerateCard />
         </ScrollView>
       )}
     </View>
+  );
+}
+
+/** Arma las rutinas de la semana con este plan (§3.4). Avisa si va a reemplazar las generadas antes. */
+function GenerateCard() {
+  const routines = useRoutines();
+  const generate = useGenerateRoutines();
+  const hasGenerated = (routines.data ?? []).some((r) => r.origin === 'generated');
+
+  const run = () =>
+    generate.mutate(undefined, {
+      onSuccess: () => router.push('/routines'),
+      onError: (e) => Alert.alert('No se pudieron armar', e.message),
+    });
+  const confirm = () =>
+    hasGenerated
+      ? Alert.alert('Volver a armar', 'Se reemplazan las rutinas que armó la app antes. Las tuyas no se tocan.', [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Armar', onPress: run },
+        ])
+      : run();
+
+  return (
+    <Card style={{ gap: spacing.sm, borderColor: colors.accent }}>
+      <Text style={styles.title}>Armá tus rutinas</Text>
+      <Text style={styles.muted}>
+        Una rutina por día con 1 a 3 ejercicios por músculo: primero multiarticulares, después aislamiento. Después podés
+        cambiar cualquier ejercicio o sumar los tuyos.
+      </Text>
+      <Button
+        title={generate.isPending ? 'Armando…' : hasGenerated ? 'Volver a armar mis rutinas' : 'Armar mis rutinas'}
+        onPress={confirm}
+        disabled={generate.isPending}
+      />
+    </Card>
   );
 }
