@@ -1,3 +1,4 @@
+import { decideJointPain, type Muscle } from '@gym/domain';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { definedOnly } from '../common/objects';
 import { toSetLog } from '../common/set-log';
@@ -83,7 +84,23 @@ export class ExercisesService {
       performedAt: e.session.performedAt,
       isDeload: e.session.isDeload,
       targetMuscle: e.targetMuscle,
+      jointPain: e.jointPain,
       sets: e.sets.map(toSetLog),
     }));
+  }
+
+  /** Qué hacer por dolor articular según las últimas veces del ejercicio (§6.5). */
+  async jointPain(userId: string, id: string) {
+    const history = await this.history(userId, id, 2);
+    return decideJointPain(history.map((h) => h.jointPain));
+  }
+
+  /** Otros ejercicios que pueden contar para el músculo: para cambiar uno que duele. */
+  async alternatives(userId: string, muscle: Muscle, exclude: string[]) {
+    return this.prisma.exercise.findMany({
+      where: { ...visibleTo(userId), targetMuscles: { has: muscle }, id: { notIn: exclude } },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, type: true },
+    });
   }
 }

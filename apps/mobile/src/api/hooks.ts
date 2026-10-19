@@ -93,6 +93,16 @@ export function useCreateRoutine() {
   });
 }
 
+/** Cambia un ejercicio de la rutina por otro del mismo músculo (ej. porque duele). */
+export function useReplaceExercise(routineId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ exerciseId, replacementId }: { exerciseId: string; replacementId: string }) =>
+      api(`/routines/${routineId}/exercises/${exerciseId}/replace`, { method: 'POST', body: { exerciseId: replacementId } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.routines }),
+  });
+}
+
 export function useLogSession() {
   const qc = useQueryClient();
   return useMutation({

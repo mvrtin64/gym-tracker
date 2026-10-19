@@ -62,6 +62,22 @@ enum Feel {
   very_easy
 }
 
+/// Dolor articular en un ejercicio (docs/dominio.md §6.5).
+enum JointPain {
+  none
+  mild
+  moderate
+  severe
+}
+
+/// Cómo se recuperó un músculo de la sesión anterior (docs/dominio.md §6.5).
+enum Soreness {
+  never_sore
+  healed_early
+  healed_just_in_time
+  still_sore
+}
+
 enum RoutineOrigin {
   manual
   generated
@@ -237,6 +253,7 @@ model WorkoutSession {
   isDeload    Boolean         @default(false)
   notes       String?
   entries     ExerciseEntry[]
+  soreness    MuscleSoreness[]
 
   @@index([userId, performedAt])
   @@index([routineId, performedAt])
@@ -251,9 +268,21 @@ model ExerciseEntry {
   exercise     Exercise       @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
   position     Int
   targetMuscle Muscle
+  /// Dolor articular que marcó al terminar el músculo; null si no respondió.
+  jointPain    JointPain?
   sets         SetEntry[]
 
   @@index([exerciseId])
+}
+
+/// Agujetas: cómo llegó cada músculo a esta sesión desde la anterior.
+model MuscleSoreness {
+  sessionId String
+  session   WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  muscle    Muscle
+  soreness  Soreness
+
+  @@id([sessionId, muscle])
 }
 
 /// Se guarda lo que respondió el usuario (feel o rpe) y el RIR calculado.

@@ -18,6 +18,7 @@ erDiagram
   Routine ||--o{ RoutineExercise : contiene
   Routine |o--o{ WorkoutSession : origina
   WorkoutSession ||--o{ ExerciseEntry : contiene
+  WorkoutSession ||--o{ MuscleSoreness : agujetas
   ExerciseEntry ||--o{ SetEntry : contiene
 ```
 
@@ -51,8 +52,9 @@ erDiagram
 | Entidad | Campos clave | Notas |
 |---|---|---|
 | `WorkoutSession` | `performedAt`, `routineId?`, `isDeload`, `notes` | `isDeload`: semana de descarga (§5.3) |
-| `ExerciseEntry` | `position`, `targetMuscle` | `targetMuscle` se **copia** al anotar: si la rutina cambia, el volumen histórico no se recalcula mal |
+| `ExerciseEntry` | `position`, `targetMuscle`, `jointPain?` | `targetMuscle` se **copia** al anotar: si la rutina cambia, el volumen histórico no se recalcula mal. `jointPain`: dolor articular marcado al terminar el músculo (§6.5) |
 | `SetEntry` | `weightKg`, `reps`, `warmup`, `feel?`, `rpe?`, `rir` | Se guarda lo que respondió el usuario (`feel` el principiante, `rpe` el resto) **y** el `rir` calculado |
+| `MuscleSoreness` | `muscle`, `soreness` | Cómo llegó cada músculo a la sesión desde la anterior (§6.5). Una fila por músculo y sesión |
 
 ## Enums
 
@@ -61,6 +63,8 @@ erDiagram
 - `Level`: `beginner` · `intermediate` · `advanced`
 - `Focus`: `general` · `lower` · `upper` · `specific`
 - `Feel`: `failure` (RIR 0) · `one_two_left` (1–2) · `several_left` (3–4) · `very_easy` (5+)
+- `JointPain`: `none` · `mild` · `moderate` · `severe`
+- `Soreness`: `never_sore` · `healed_early` · `healed_just_in_time` · `still_sore`
 
 ## Código de dominio (`packages/domain`)
 

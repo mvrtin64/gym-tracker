@@ -221,6 +221,31 @@ Al anotar cada serie se pregunta, al lado, cómo se sintió. Con eso se estima u
 Dentro de una rutina, cada ejercicio se compara con la última vez que se hizo esa misma rutina:
 progresó / igual / retrocedió, serie por serie. Manda el peso máximo; con el mismo peso, las reps.
 
+### 6.5 Feedback de dolor y recuperación ✅
+
+Al **terminar un músculo** en la sesión (se marca la última serie de su último ejercicio) aparece
+una hoja con dos preguntas.
+
+**Dolor articular** — por cada ejercicio de ese músculo: ninguno / leve / moderado / mucho.
+
+| Respuesta | Primera vez | Si se repite la vez siguiente en ese ejercicio |
+|---|---|---|
+| Ninguno | — | — |
+| Leve | Se registra | Se registra |
+| Moderado | Aviso: **revisar técnica y propiocepción**. No se cambia nada | Sugerir **bajar el peso** de ese ejercicio |
+| Mucho | Aviso: **revisar técnica y propiocepción**. No se cambia nada | Sugerir **cambiar el ejercicio** por otro del mismo músculo |
+
+**Agujetas / recuperación** — por músculo, sobre la **sesión anterior** de ese músculo:
+nunca me dolió / sanó hace rato / sanó justo a tiempo / todavía me duele.
+
+| Respuesta | Decisión |
+|---|---|
+| Nunca me dolió · Sanó hace rato · Sanó justo a tiempo | No se toca (la app no suma series sola, §5.3) |
+| **Todavía me duele 2 veces seguidas** | No se está recuperando: **−1 serie** semanal de ese músculo |
+
+La baja por agujetas sigue el mismo camino que la de §5.3: sugerencia o automática según la rutina,
+y se acepta o se descarta igual.
+
 ---
 
 ## 7. Decisiones de implementación a validar
@@ -248,6 +273,12 @@ Detalles que las reglas no fijaban y se resolvieron en `packages/domain`. Son f�
 | Abdominales | Van con el tren inferior | `training/muscles.ts` |
 | Músculos chicos | Frecuencia 2 como el resto; la 3 queda para los priorizados | `planning/planner.ts` |
 | Series por ejercicio | 4 = 2 + 2; 7 = 3 + 2 + 2 | `planning/planner.ts` |
+| Dolor leve | Solo se registra, sin aviso | `feedback/pain.ts` |
+| Dolor que se repite subiendo | Moderado y después mucho cuenta como repetido: se actúa según la última respuesta (cambiar el ejercicio). Mucho y después moderado: bajar el peso | `feedback/pain.ts` |
+| Cuánto bajar el peso por dolor | −10%, como la descarga de un ejercicio (§6.1), redondeado al incremento | `feedback/pain.ts` |
+| Agujetas en el primer entrenamiento de un músculo | No se pregunta: no hay sesión anterior | app |
+| "Todavía me duele" seguidas | Cuentan las respuestas de ese músculo una detrás de otra; cualquier otra respuesta en el medio corta la racha | `feedback/soreness.ts` |
+| Agujetas y estancamiento a la vez | Se suman en un solo cambio de ese músculo, con el mismo máximo de −2 series | `apps/api/src/volume/adjustments.service.ts` |
 
 ## 8. Pendientes ❓
 

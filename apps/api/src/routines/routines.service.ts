@@ -1,4 +1,4 @@
-import { DELOAD_WEEK, deloadWeight, scaleSets } from '@gym/domain';
+import { DELOAD_WEEK, deloadWeight, painWeight, scaleSets, workingSets } from '@gym/domain';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { definedOnly } from '../common/objects';
 import { toSetLog } from '../common/set-log';
@@ -84,6 +84,29 @@ export class RoutinesService {
   }
 
   /**
+   * Cambia un ejercicio de la rutina por otro que cuente para el mismo músculo, con la misma
+   * prescripción y en el mismo lugar.
+   */
+  async replaceExercise(userId: string, id: string, exerciseId: string, newExerciseId: string) {
+    const routine = await this.prisma.routine.findFirst({ where: { id, userId }, include: { exercises: true } });
+    const current = routine?.exercises.find((e) => e.exerciseId === exerciseId);
+    if (!routine || !current) throw new NotFoundException('El ejercicio no está en la rutina');
+    if (routine.exercises.some((e) => e.exerciseId === newExerciseId)) {
+      throw new ConflictException('Ese ejercicio ya está en la rutina');
+    }
+    const replacement = await this.prisma.exercise.findFirst({ where: { id: newExerciseId, ...visibleTo(userId) } });
+    if (!replacement) throw new BadRequestException('El ejercicio no existe');
+    if (!replacement.targetMuscles.includes(current.targetMuscle)) {
+      throw new BadRequestException(`"${replacement.name}" no puede contar para ${current.targetMuscle}`);
+    }
+    return this.prisma.routineExercise.update({
+      where: { routineId_exerciseId: { routineId: id, exerciseId } },
+      data: { exerciseId: newExerciseId },
+      include: { exercise: true },
+    });
+  }
+
+  /**
    * Arma el entrenamiento del día: para cada ejercicio, su prescripción, el objetivo de hoy, la
    * anotación del usuario y lo que hizo la última vez que entrenó esta rutina (o, si el ejercicio
    * es nuevo en la rutina, la última vez que lo hizo en cualquier sesión). Las sesiones de descarga
@@ -128,7 +151,15 @@ export class RoutinesService {
             reason: `Semana de descarga: mitad de series y de peso. Dejá ${DELOAD_WEEK.rir.min}–${DELOAD_WEEK.rir.max} reps en reserva.`,
           };
         }
-        return { exercise, targetMuscle, prescription, note: settings.note, target, previous };
+        // Dolor articular repetido (§6.5): moderado baja el peso; mucho pide cambiar el ejercicio.
+        const decision = await this.exercises.jointPain(userId, exercise.id);
+        const pain = decision.kind === 'none' ? null : decision;
+        if (decision.kind === 'lower_weight' && deload?.phase !== 'deload') {
+          const last = await this.exercises.history(userId, exercise.id, 1);
+          const top = Math.max(0, ...workingSets(last[0]?.sets ?? []).map((s) => s.weightKg));
+          target = { ...target, weightKg: Math.min(target.weightKg, painWeight(top, settings.weightIncrementKg)), reason: decision.reason };
+        }
+        return { exercise, targetMuscle, prescription, note: settings.note, target, previous, pain };
       }),
     );
 

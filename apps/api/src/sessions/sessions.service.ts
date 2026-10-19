@@ -1,7 +1,9 @@
-import { rirFromFeedback, type Muscle } from '@gym/domain';
+import { painWeight, rirFromFeedback, workingSets, type Muscle } from '@gym/domain';
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { toSetLog } from '../common/set-log';
 import { visibleTo } from '../exercises/exercise.mapper';
-import type { AdjustMode } from '../generated/prisma/client';
+import { ExercisesService } from '../exercises/exercises.service';
+import type { AdjustMode, Exercise, ExerciseEntry, SetEntry } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdjustmentsService, type SessionReview } from '../volume/adjustments.service';
 import { VolumeService } from '../volume/volume.service';
@@ -9,12 +11,15 @@ import { CreateSessionDto } from './dto/create-session.dto';
 
 const withSets = { entries: { orderBy: { position: 'asc' }, include: { exercise: true, sets: { orderBy: { position: 'asc' } } } } } as const;
 
+type SessionEntry = ExerciseEntry & { exercise: Exercise; sets: SetEntry[] };
+
 @Injectable()
 export class SessionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly volume: VolumeService,
     private readonly adjustments: AdjustmentsService,
+    private readonly exercises: ExercisesService,
   ) {}
 
   list(userId: string, take = 20) {
@@ -53,6 +58,7 @@ export class SessionsService {
         exerciseId: exercise.id,
         position: i,
         targetMuscle,
+        jointPain: entry.jointPain,
         sets: {
           // Se guarda lo que respondió el usuario y el RIR estimado por el dominio.
           create: entry.sets.map((s, j) => ({ ...s, rir: rirFromFeedback(s), position: j })),
@@ -70,6 +76,7 @@ export class SessionsService {
         routineId: dto.routineId,
         isDeload,
         entries: { create: entries },
+        soreness: { create: dto.soreness ?? [] },
       },
       include: withSets,
     });
@@ -77,6 +84,31 @@ export class SessionsService {
     const review: SessionReview = isDeload
       ? { volumeChanges: [], pushHarder: [], deload: null }
       : await this.adjustments.afterSession(userId, entries.map((e) => e.targetMuscle), adjustMode);
-    return { ...session, review };
+    const jointPain = await this.jointPainReview(userId, session.entries, [...routineTargets.keys()]);
+    return { ...session, review: { ...review, jointPain } };
+  }
+
+  /**
+   * Dolor articular de cada ejercicio (§6.5): un aviso la primera vez y, si se repite, el peso al que
+   * bajar o con qué ejercicios cambiarlo. `inRoutine` queda fuera de las alternativas.
+   */
+  private async jointPainReview(userId: string, entries: SessionEntry[], inRoutine: string[]) {
+    const review = [];
+    for (const entry of entries.filter((e) => e.jointPain === 'moderate' || e.jointPain === 'severe')) {
+      const decision = await this.exercises.jointPain(userId, entry.exerciseId);
+      if (decision.kind === 'none') continue;
+      const item = { exerciseId: entry.exerciseId, exerciseName: entry.exercise.name, targetMuscle: entry.targetMuscle, ...decision };
+      if (decision.kind === 'lower_weight') {
+        const { settings } = await this.exercises.get(userId, entry.exerciseId);
+        const top = Math.max(...workingSets(entry.sets.map(toSetLog)).map((s) => s.weightKg));
+        review.push({ ...item, weightKg: painWeight(top, settings.weightIncrementKg) });
+      } else if (decision.kind === 'swap') {
+        const exclude = [...new Set([...inRoutine, ...entries.map((e) => e.exerciseId)])];
+        review.push({ ...item, alternatives: await this.exercises.alternatives(userId, entry.targetMuscle, exclude) });
+      } else {
+        review.push(item);
+      }
+    }
+    return review;
   }
 }

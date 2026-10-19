@@ -6,6 +6,8 @@ export * from './progression/comparison';
 export * from './training/muscles';
 export * from './training/profile';
 export * from './feedback/rir';
+export * from './feedback/pain';
+export * from './feedback/soreness';
 export * from './volume/volume';
 export * from './volume/adjustment';
 export * from './volume/history';
