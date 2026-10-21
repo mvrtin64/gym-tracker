@@ -5,7 +5,7 @@ import { router, Stack } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useProfile, useSaveProfile } from '../api/hooks';
+import { useGenerateRoutines, useProfile, useSaveProfile } from '../api/hooks';
 import type { ProfileInput } from '../api/types';
 import {
   Button, Card, Field, MultiChips, OptionGrid, ProgressBar, QueryState, ScreenHeader, Stepper, styles,
@@ -39,6 +39,7 @@ const byWeekOrder = (days: Weekday[]) => [...days].sort((a, b) => WEEKDAYS.index
 export default function OnboardingScreen() {
   const profile = useProfile();
   const save = useSaveProfile();
+  const generate = useGenerateRoutines();
   // El volumen se pregunta solo la primera vez: después se ajusta desde la semana, no desde el perfil.
   const firstTime = profile.data === null;
 
@@ -109,8 +110,31 @@ export default function OnboardingScreen() {
         ...(firstTime && { reportedVolume: MUSCLES.map((muscle) => ({ muscle, weeklySets: volume[muscle] })) }),
       });
     }
-    save.mutate(body, { onSuccess: () => router.replace('/'), onError: (e) => Alert.alert('No se guardó', e.message) });
+    save.mutate(body, { onSuccess: afterSave, onError: (e) => Alert.alert('No se guardó', e.message) });
   };
+
+  /**
+   * El principiante no sabe armar una rutina: la app se la arma al terminar el onboarding y, si
+   * después cambia los días, le ofrece rearmarla. Intermedio y avanzado eligen sus ejercicios.
+   */
+  const afterSave = () => {
+    const daysChanged = byWeekOrder(days).join() !== byWeekOrder(profile.data?.trainingDays ?? []).join();
+    if (level !== 'beginner' || (!firstTime && !daysChanged)) return router.replace('/');
+    const build = () =>
+      generate.mutate(undefined, {
+        onSuccess: () => router.replace('/'),
+        onError: (e) => Alert.alert('No se pudieron armar tus rutinas', `${e.message}\nProbá desde la pestaña Plan.`, [
+          { text: 'OK', onPress: () => router.replace('/') },
+        ]),
+      });
+    if (firstTime) return build();
+    Alert.alert('Cambiaste tus días', '¿Rearmamos tus rutinas para los días nuevos? Las que creaste vos no se tocan.', [
+      { text: 'Ahora no', style: 'cancel', onPress: () => router.replace('/') },
+      { text: 'Rearmar', onPress: build },
+    ]);
+  };
+  const busy = save.isPending || generate.isPending;
+  const busyLabel = generate.isPending ? 'Armando tus rutinas…' : 'Guardando…';
 
   if (profile.isLoading || profile.error) {
     return (
@@ -182,7 +206,7 @@ export default function OnboardingScreen() {
             {body(id)}
           </Card>
         ))}
-        <Button title={save.isPending ? 'Guardando…' : 'Guardar'} onPress={submit} disabled={save.isPending} />
+        <Button title={busy ? busyLabel : 'Guardar'} onPress={submit} disabled={busy} />
       </ScrollView>
     );
   }
@@ -222,7 +246,7 @@ export default function OnboardingScreen() {
           </View>
         )}
         <View style={{ flex: 2 }}>
-          <Button title={save.isPending ? 'Guardando…' : last ? 'Empezar' : 'Siguiente'} onPress={next} disabled={save.isPending} />
+          <Button title={busy ? busyLabel : last ? 'Empezar' : 'Siguiente'} onPress={next} disabled={busy} />
         </View>
       </View>
     </SafeAreaView>

@@ -7,6 +7,7 @@ import type { ProfileDto, VolumeSummaryDto } from '../../api/types';
 import { DeloadCard, PendingChanges } from '../../components/adjustments';
 import { Button, Card, ProgressBar, QueryState, ScreenHeader, styles } from '../../components/ui';
 import { colors, MUSCLE_COLORS, MUSCLE_LABELS, spacing } from '../../theme';
+import { GenerateCard } from './plan';
 import { RoutineCard } from './routines';
 
 /** Día de la semana de hoy con las claves del dominio (getDay: 0 = domingo). */
@@ -48,7 +49,8 @@ function Today({ profile }: { profile: ProfileDto }) {
           <PendingChanges changes={volume.data.pendingChanges} />
 
           {todays.map((r) => <RoutineCard key={r.id} routine={r} highlight />)}
-          {todays.length === 0 && (
+          {routines.data.length === 0 && <GenerateCard />}
+          {routines.data.length > 0 && todays.length === 0 && (
             <Card style={{ gap: spacing.sm }}>
               <Text style={styles.title}>{trainingDay ? 'Hoy toca entrenar' : 'Día de descanso'}</Text>
               <Text style={styles.muted}>

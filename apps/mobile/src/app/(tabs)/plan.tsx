@@ -49,8 +49,11 @@ export default function PlanScreen() {
   );
 }
 
-/** Arma las rutinas de la semana con este plan (§3.4). Avisa si va a reemplazar las generadas antes. */
-function GenerateCard() {
+/**
+ * Arma las rutinas de la semana con este plan (§3.4). Avisa si va a reemplazar las generadas antes.
+ * También se usa en Hoy y en Rutinas cuando el usuario no tiene ninguna.
+ */
+export function GenerateCard() {
   const routines = useRoutines();
   const generate = useGenerateRoutines();
   const hasGenerated = (routines.data ?? []).some((r) => r.origin === 'generated');
