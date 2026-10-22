@@ -156,9 +156,8 @@ Superior: un press, un remo, un jalón, uno de laterales, uno de bíceps y uno d
 de glúteo, uno de femoral, dos de cuádriceps y uno de gemelos. Son la base: como en cualquier rutina
 generada, el usuario puede cambiar ejercicios o sumar series y ejercicios.
 
-**Cuando mejora**: a medida que se recupera mejor y progresa, se le suman series o ejercicios, o se
-pasa a una estructura de intermedio. El parámetro es si **sesión a sesión va sumando peso y/o
-repeticiones** (§8).
+**Cuando mejora**: a medida que se recupera mejor y progresa, se le suman series o ejercicios (§5.4),
+o se pasa a una estructura de intermedio (§8).
 
 ## 4. Ejercicios
 
@@ -257,6 +256,18 @@ La app no suma series por su cuenta: subir volumen es decisión del usuario.
 
 La descarga de peso por ejercicio (§6.1) sigue funcionando aparte: es una corrección puntual de ese
 ejercicio, no de la semana.
+
+### 5.4 Cuándo crece el principiante ✅
+
+Definido por el coach. El parámetro es si **sesión a sesión va sumando peso y/o repeticiones**:
+
+- Si un ejercicio de su rutina lleva **dos sesiones seguidas progresando** y llega **cerca del fallo**
+  (está llegando sobrado: se recupera bien), se le **suma una serie**.
+- Si ese ejercicio ya tiene **4 series**, en vez de otra serie se le **suma otro ejercicio** que ataque
+  el mismo músculo, preferentemente un **analítico**.
+- Un principiante se va formando de forma constante en **3–6 meses** de entrenamiento.
+
+Detalles en §7. Es lo único en que la app suma volumen sola; para el resto, solo baja (§5.3).
 
 ## 6. Progresión y feedback
 
@@ -376,6 +387,13 @@ Detalles que las reglas no fijaban y se resolvieron en `packages/domain`. Son f�
 | Volver a generar | Reemplaza las rutinas generadas antes; las propias no se tocan | `apps/api/src/routines/routines.service.ts` |
 | Rango de reps y modo de las generadas | El rango por defecto del tipo de ejercicio; ajustes automáticos | `apps/api/src/routines/routines.service.ts` |
 | Agujetas y estancamiento a la vez | Se suman en un solo cambio de ese músculo, con el mismo máximo de −2 series | `apps/api/src/volume/adjustments.service.ts` |
+| "Cerca del fallo" para crecer | RIR promedio de 2 o menos en las dos sesiones ("al fallo" o "1-2 más"); sin RIR registrado no se suma | `volume/growth.ts` |
+| Qué cuenta como progresar | Lo mismo que la comparación con la última vez: más peso máximo, o más reps con el mismo peso | `progression/comparison.ts` |
+| Ejercicio que se suma | Un analítico del mismo músculo que no esté en la rutina, en el orden recomendado (§3.4); entra con 3 series, justo después | `planning/selection.ts` |
+| Tope al sumar ejercicios | Nunca más de 3 ejercicios por músculo en una rutina | `apps/api/src/volume/adjustments.service.ts` |
+| Después de sumar | Se vuelve a contar desde cero: hacen falta otras dos sesiones progresando. Si en la misma sesión se bajó el volumen del músculo, no se suma | `apps/api/src/volume/adjustments.service.ts` |
+| Objetivo semanal al crecer | Sube con la rutina, contando para todos los músculos que trabaja lo que se sumó (§5.1) | `apps/api/src/volume/adjustments.service.ts` |
+| Rutinas en que crece | Solo las de modo automático (las que arma la app); las propias no se tocan | `apps/api/src/sessions/sessions.service.ts` |
 
 ## 8. Pendientes ❓
 
@@ -383,6 +401,5 @@ Detalles que las reglas no fijaban y se resolvieron en `packages/domain`. Son f�
   músculo (depende del catálogo).
   - **Principiante** (definido por el coach): ver §3.5.
   - **Intermedio / avanzado** (definido por el coach): ver §3.4.
-- **Progresión del principiante**: el parámetro (definido por el coach) es si sesión a sesión va
-  sumando peso y/o repeticiones. Falta definir cuántas sesiones, cuánto se suma y cuándo pasa a otra
-  estructura. Por ahora sus rutinas no cambian solas.
+- **Paso del principiante a otra estructura**: el coach considera que se forma en 3–6 meses. Falta
+  definir qué hace la app (ej. sugerirle pasar a intermedio) y cuándo.

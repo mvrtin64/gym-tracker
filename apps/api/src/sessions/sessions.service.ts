@@ -82,8 +82,15 @@ export class SessionsService {
     });
 
     const review: SessionReview = isDeload
-      ? { volumeChanges: [], pushHarder: [], deload: null }
+      ? { volumeChanges: [], pushHarder: [], deload: null, growth: [] }
       : await this.adjustments.afterSession(userId, entries.map((e) => e.targetMuscle), adjustMode);
+    // Al principiante que viene progresando se le suman series o ejercicios en su rutina (§5.4).
+    if (!isDeload && dto.routineId && adjustMode === 'auto') {
+      const profile = await this.prisma.trainingProfile.findUnique({ where: { userId }, select: { level: true } });
+      if (profile?.level === 'beginner') {
+        review.growth = await this.adjustments.growBeginner(userId, dto.routineId, entries.map((e) => e.exerciseId));
+      }
+    }
     const jointPain = await this.jointPainReview(userId, session.entries, [...routineTargets.keys()]);
     return { ...session, review: { ...review, jointPain } };
   }

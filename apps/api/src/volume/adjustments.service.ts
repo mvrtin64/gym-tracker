@@ -1,8 +1,10 @@
 import {
-  decideMuscleVolume, decideSoreness, DELOAD_DAYS, detectGeneralStagnation, muscleHistories, type Muscle, type Soreness,
+  decideBeginnerGrowth, decideMuscleVolume, decideSoreness, DELOAD_DAYS, detectGeneralStagnation, exerciseHistory,
+  GROWTH_EXERCISE_SETS, growthExercise, MAX_EXERCISES_PER_MUSCLE, muscleHistories, musclesWorked, type Muscle, type Soreness,
 } from '@gym/domain';
 import { Injectable } from '@nestjs/common';
 import { toSetLog } from '../common/set-log';
+import { defaultPrescription, visibleTo } from '../exercises/exercise.mapper';
 import type { AdjustMode, Deload, VolumeChange } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { VolumeService } from './volume.service';
@@ -25,6 +27,19 @@ function sorenessHistory(
 /** Cuánta historia se mira: sobra para las últimas sesiones de cada músculo y la ventana de 2 semanas. */
 const HISTORY_DAYS = 42;
 
+/** Lo que se le sumó a un ejercicio del principiante que viene progresando (§5.4). */
+export interface GrowthItem {
+  exerciseId: string;
+  exerciseName: string;
+  targetMuscle: Muscle;
+  kind: 'add_set' | 'add_exercise';
+  /** Series del ejercicio (con `add_set`, ya con la nueva). */
+  sets: number;
+  /** El ejercicio que se sumó, con `add_exercise`. */
+  added?: { exerciseId: string; exerciseName: string; sets: number };
+  reason: string;
+}
+
 export interface SessionReview {
   /** Cambios de volumen que salieron de esta sesión: sugeridos o, en modo automático, ya aplicados. */
   volumeChanges: VolumeChange[];
@@ -32,6 +47,8 @@ export interface SessionReview {
   pushHarder: { muscle: Muscle; reason: string }[];
   /** Descarga general sugerida o, en modo automático, ya arrancada. */
   deload: Deload | null;
+  /** Series o ejercicios que se le sumaron al principiante. */
+  growth: GrowthItem[];
 }
 
 @Injectable()
@@ -44,10 +61,11 @@ export class AdjustmentsService {
   /**
    * Revisa el volumen después de registrar una sesión (docs/dominio.md §5.3). Con `auto` los ajustes
    * se aplican solos; con `suggest` quedan pendientes hasta que el usuario los acepte o descarte.
-   * La app nunca suma series: solo baja volumen, pide apretar más o propone una descarga.
+   * Acá nunca se suman series: solo baja volumen, pide apretar más o propone una descarga. Sumar es
+   * solo para el principiante (`growBeginner`).
    */
   async afterSession(userId: string, trained: Muscle[], mode: AdjustMode, now = new Date()): Promise<SessionReview> {
-    const review: SessionReview = { volumeChanges: [], pushHarder: [], deload: null };
+    const review: SessionReview = { volumeChanges: [], pushHarder: [], deload: null, growth: [] };
     const active = await this.volume.activeDeload(userId, now);
     // En la semana de descarga se entrena liviano a propósito: no hay nada que evaluar.
     if (active?.phase === 'deload') return review;
@@ -103,6 +121,89 @@ export class AdjustmentsService {
       }
     }
     return review;
+  }
+
+  /**
+   * Principiante con una rutina en modo automático (§5.4): a cada ejercicio de la rutina que hizo y
+   * viene progresando cerca del fallo, se le suma una serie; si ya tiene 4, se suma un analítico del
+   * mismo músculo (sin pasar de 3 ejercicios por músculo). El objetivo semanal sube con la rutina.
+   * Después de cualquier cambio en el músculo, se vuelve a contar desde cero.
+   */
+  async growBeginner(userId: string, routineId: string, trained: string[], now = new Date()): Promise<GrowthItem[]> {
+    const routine = await this.prisma.routine.findFirst({
+      where: { id: routineId, userId },
+      include: { exercises: { orderBy: { position: 'asc' }, include: { exercise: true } } },
+    });
+    if (!routine) return [];
+    const [sessions, changes, catalog] = await Promise.all([
+      this.recentSessions(userId, now),
+      this.prisma.volumeChange.findMany({ where: { userId } }),
+      this.prisma.exercise.findMany({ where: visibleTo(userId) }),
+    ]);
+
+    const inRoutine = new Set(routine.exercises.map((e) => e.exerciseId));
+    const perMuscle = new Map<Muscle, number>();
+    for (const e of routine.exercises) perMuscle.set(e.targetMuscle, (perMuscle.get(e.targetMuscle) ?? 0) + 1);
+
+    const result: GrowthItem[] = [];
+    // Van en orden de posición: cada ejercicio que se inserta corre un lugar a los que siguen.
+    let inserted = 0;
+    for (const item of routine.exercises.filter((e) => trained.includes(e.exerciseId))) {
+      const muscle = item.targetMuscle;
+      const lastChange = Math.max(0, ...changes.filter((c) => c.muscle === muscle).map((c) => (c.decidedAt ?? c.createdAt).getTime()));
+      const history = exerciseHistory(sessions, item.exerciseId).filter((s) => s.performedAt.getTime() > lastChange);
+      const decision = decideBeginnerGrowth(history, item.sets);
+      if (decision.kind === 'keep') continue;
+
+      if (decision.kind === 'add_set') {
+        await this.prisma.routineExercise.update({
+          where: { routineId_exerciseId: { routineId, exerciseId: item.exerciseId } },
+          data: { sets: item.sets + 1 },
+        });
+        await this.grow(userId, muscle, musclesWorked(item.exercise.name, muscle), 1, decision.reason, now);
+        result.push({ exerciseId: item.exerciseId, exerciseName: item.exercise.name, targetMuscle: muscle, kind: 'add_set', sets: item.sets + 1, reason: decision.reason });
+        continue;
+      }
+
+      if ((perMuscle.get(muscle) ?? 0) >= MAX_EXERCISES_PER_MUSCLE) continue;
+      const added = growthExercise(muscle, catalog, inRoutine);
+      if (!added) continue;
+      // Entra justo después del ejercicio que viene progresando.
+      const position = item.position + inserted;
+      await this.prisma.$transaction([
+        this.prisma.routineExercise.updateMany({ where: { routineId, position: { gt: position } }, data: { position: { increment: 1 } } }),
+        this.prisma.routineExercise.create({
+          data: {
+            routineId,
+            exerciseId: added.id,
+            position: position + 1,
+            targetMuscle: muscle,
+            ...defaultPrescription(added.type),
+            sets: GROWTH_EXERCISE_SETS,
+          },
+        }),
+      ]);
+      inRoutine.add(added.id);
+      inserted++;
+      perMuscle.set(muscle, (perMuscle.get(muscle) ?? 0) + 1);
+      await this.grow(userId, muscle, musclesWorked(added.name, muscle), GROWTH_EXERCISE_SETS, decision.reason, now);
+      result.push({
+        exerciseId: item.exerciseId,
+        exerciseName: item.exercise.name,
+        targetMuscle: muscle,
+        kind: 'add_exercise',
+        sets: item.sets,
+        added: { exerciseId: added.id, exerciseName: added.name, sets: GROWTH_EXERCISE_SETS },
+        reason: decision.reason,
+      });
+    }
+    return result;
+  }
+
+  /** Sube el objetivo de los músculos que suma lo agregado y deja el cambio en el historial del músculo. */
+  private async grow(userId: string, muscle: Muscle, muscles: Muscle[], sets: number, reason: string, now: Date) {
+    for (const m of muscles) await this.volume.applyDelta(userId, m, sets);
+    await this.prisma.volumeChange.create({ data: { userId, muscle, delta: sets, reason, status: 'applied', decidedAt: now } });
   }
 
   /** Sesiones normales (sin descarga) desde la última descarga: después de una se arranca de cero. */

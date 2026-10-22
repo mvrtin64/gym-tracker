@@ -170,6 +170,18 @@ export interface SessionReviewDto {
   deload: DeloadDto | null;
   /** Dolor articular: aviso, peso al que bajar o ejercicios para cambiarlo (§6.5). */
   jointPain: JointPainReviewDto[];
+  /** Lo que se le sumó al principiante que viene progresando (§5.4). */
+  growth: GrowthDto[];
+}
+
+export interface GrowthDto {
+  exerciseId: string;
+  exerciseName: string;
+  targetMuscle: Muscle;
+  kind: 'add_set' | 'add_exercise';
+  sets: number;
+  added?: { exerciseId: string; exerciseName: string; sets: number };
+  reason: string;
 }
 
 /** Ejercicio para cambiar uno de la rutina. */

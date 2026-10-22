@@ -51,7 +51,7 @@ export type VolumeDecision =
  * - Progresó en alguna → no se toca.
  * - Se estancó o retrocedió con RIR alto → no es el volumen: hay que apretar más.
  * - Se estancó con RIR 0–2 (o sin RIR registrado) → −1 serie; −2 si además retrocedió.
- * La app nunca suma series por su cuenta.
+ * Acá nunca se suman series: eso es solo para el principiante (`decideBeginnerGrowth`, §5.4).
  */
 export function decideMuscleVolume(history: MuscleSession[]): VolumeDecision {
   const recent = [...history]

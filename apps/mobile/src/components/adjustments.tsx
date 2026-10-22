@@ -126,11 +126,21 @@ export function JointPainCard({ items, routineId }: { items: JointPainReviewDto[
 
 /** Qué decidió la app sobre el volumen al terminar el entrenamiento. */
 export function ReviewCard({ review }: { review: SessionReviewDto }) {
-  const { volumeChanges, pushHarder, deload } = review;
-  if (volumeChanges.length === 0 && pushHarder.length === 0 && !deload) return null;
+  const { volumeChanges, pushHarder, deload, growth } = review;
+  if (volumeChanges.length === 0 && pushHarder.length === 0 && !deload && growth.length === 0) return null;
   return (
     <Card style={{ gap: spacing.md, borderColor: colors.warning }}>
       <Text style={styles.title}>Ajustes</Text>
+      {growth.map((g) => (
+        <View key={g.exerciseId} style={{ gap: 2 }}>
+          <Text style={styles.text}>
+            {g.kind === 'add_set'
+              ? `📈 ${g.exerciseName}: la próxima vez son ${sets(g.sets)}.`
+              : `📈 ${MUSCLE_LABELS[g.targetMuscle]}: se sumó ${g.added!.exerciseName} (${sets(g.added!.sets)}) después de ${g.exerciseName}.`}
+          </Text>
+          <Text style={styles.muted}>{g.reason}</Text>
+        </View>
+      ))}
       {deload && (
         <Text style={styles.text}>
           {deload.status === 'started' ? '🔄 Arrancó una semana de descarga. ' : '🔄 Te sugerimos una semana de descarga (la ves en el inicio). '}
