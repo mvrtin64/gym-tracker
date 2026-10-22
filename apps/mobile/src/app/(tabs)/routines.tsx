@@ -4,6 +4,7 @@ import { useRoutines } from '../../api/hooks';
 import type { RoutineDto } from '../../api/types';
 import { Button, Card, MuscleTag, QueryState, styles } from '../../components/ui';
 import { colors, spacing, WEEKDAY_LONG } from '../../theme';
+import { GenerateCard } from './plan';
 
 const daysAgo = (iso: string) => {
   const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
@@ -20,9 +21,7 @@ export default function RoutinesScreen() {
         <ScrollView
           contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}
           refreshControl={<RefreshControl refreshing={routines.isRefetching} onRefresh={routines.refetch} tintColor={colors.accent} />}>
-          {routines.data.length === 0 && (
-            <Text style={styles.muted}>Armá una rutina para entrenar y comparar con la última vez.</Text>
-          )}
+          {routines.data.length === 0 && <GenerateCard />}
           {routines.data.map((r) => <RoutineCard key={r.id} routine={r} />)}
           <Button title="+ Nueva rutina" variant="ghost" onPress={() => router.push('/new-routine')} />
         </ScrollView>
