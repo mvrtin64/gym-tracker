@@ -42,7 +42,9 @@ export class ProfileService {
 
   /**
    * Guarda las respuestas del onboarding. La primera vez también fija el volumen inicial por
-   * músculo; después, cambiar el perfil no toca el volumen (ese se ajusta aparte).
+   * músculo; después, cambiar el perfil no toca el volumen (ese se ajusta aparte). La excepción es
+   * el principiante: su volumen sale de sus días armados, así que se recalcula si cambia la
+   * cantidad de días o si pasa a ser principiante.
    */
   async upsert(userId: string, dto: UpsertProfileDto) {
     if ((dto.preferredRepMin === undefined) !== (dto.preferredRepMax === undefined)) {
@@ -60,8 +62,14 @@ export class ProfileService {
       }),
     );
 
-    const hasVolume = (await this.prisma.muscleVolume.count({ where: { userId } })) > 0;
-    const volume: WeeklyVolume | null = hasVolume ? null : domain(() => initialVolume(profile));
+    const [hasVolume, previous] = await Promise.all([
+      this.prisma.muscleVolume.count({ where: { userId } }).then((n) => n > 0),
+      this.prisma.trainingProfile.findUnique({ where: { userId } }),
+    ]);
+    const beginnerChanged =
+      profile.level === 'beginner' &&
+      (previous?.level !== 'beginner' || previous.trainingDays.length !== profile.trainingDays.length);
+    const volume: WeeklyVolume | null = hasVolume && !beginnerChanged ? null : domain(() => initialVolume(profile));
 
     const data = {
       level: profile.level,
@@ -74,7 +82,10 @@ export class ProfileService {
     await this.prisma.$transaction([
       this.prisma.trainingProfile.upsert({ where: { userId }, create: { ...data, userId }, update: data }),
       ...(volume
-        ? [this.prisma.muscleVolume.createMany({ data: MUSCLES.map((muscle) => ({ userId, muscle, weeklySets: volume[muscle] })) })]
+        ? [
+            this.prisma.muscleVolume.deleteMany({ where: { userId } }),
+            this.prisma.muscleVolume.createMany({ data: MUSCLES.map((muscle) => ({ userId, muscle, weeklySets: volume[muscle] })) }),
+          ]
         : []),
     ]);
     return this.get(userId);

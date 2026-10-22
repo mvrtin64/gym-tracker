@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { beginnerWeeklySets, initialVolume, MUSCLES, muscleRecord, weeklySetsByMuscle, type TrainingProfile } from '../src';
+import { beginnerVolume, initialVolume, MUSCLES, muscleRecord, weeklySetsByMuscle, type TrainingProfile } from '../src';
 
 const beginner: TrainingProfile = {
   level: 'beginner',
@@ -9,14 +9,8 @@ const beginner: TrainingProfile = {
 };
 
 describe('volumen inicial', () => {
-  it('principiante: 12–18 series según los días', () => {
-    expect([1, 2, 3, 4, 5, 6].map(beginnerWeeklySets)).toEqual([12, 12, 14, 16, 18, 18]);
-    expect(() => beginnerWeeklySets(7)).toThrow();
-  });
-
-  it('principiante: el mismo volumen para todos los músculos, aunque haya pedido priorizar', () => {
-    const v = initialVolume(beginner);
-    expect(new Set(Object.values(v))).toEqual(new Set([14]));
+  it('principiante: lo que suman sus días, aunque haya pedido priorizar', () => {
+    expect(initialVolume(beginner)).toEqual(beginnerVolume(beginner.trainingDays));
   });
 
   it('intermedio: parte del volumen con el que dice manejarse', () => {
@@ -53,5 +47,14 @@ describe('series efectivas por semana', () => {
     expect(v.chest).toBe(3); // la serie con RIR 4 cuenta igual
     expect(v.triceps).toBe(0); // el press no suma volumen indirecto
     expect(Object.keys(v)).toEqual([...MUSCLES]);
+  });
+
+  it('con `muscles` (principiante), cada serie cuenta completa para todos', () => {
+    const v = weeklySetsByMuscle(
+      [{ performedAt: from, targetMuscle: 'chest', muscles: ['chest', 'front_delt', 'triceps'], sets: [{ weightKg: 20, reps: 10 }] }],
+      from,
+      to,
+    );
+    expect([v.chest, v.front_delt, v.triceps, v.biceps]).toEqual([1, 1, 1, 0]);
   });
 });

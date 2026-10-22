@@ -35,7 +35,7 @@ Después del login se le pregunta al usuario:
 - **Enfoques**: general / completo · tren inferior y glúteos · tren superior · músculos específicos
   (el usuario elige cuáles).
 - **El principiante no prioriza**: tiene que trabajar todo por igual. Su enfoque es siempre general y
-  todos los músculos llevan el mismo volumen.
+  su semana sale de días armados (§3.5).
 
 ## 3. Rutinas
 
@@ -67,6 +67,23 @@ El usuario **siempre** puede sumar o restar series; la lógica de sobrecarga se 
   llegar a la frecuencia ideal sin días seguidos, se baja la frecuencia y se mantiene el volumen
   semanal repartido en menos días.
 
+**División según los días** ✅ (definido por el coach, enfoque general):
+
+| Días | División |
+|---|---|
+| 1–3 | Cuerpo completo |
+| 4 | Empuje · tirón · piernas · descanso · cuerpo completo |
+| 5 | Empuje · tirón · piernas · superior · inferior |
+| 6 | Lo mismo + un día que se repite: cuerpo completo |
+
+- Con un **tren priorizado** (intermedio / avanzado), los músculos priorizados van más días. Con 4
+  días, al menos dos son para la prioridad: piernas y cuerpo completo para el inferior; empuje,
+  tirón y cuerpo completo para el superior. Con 6, el día que se repite es el del tren priorizado
+  (piernas o superior).
+- Cada músculo va en los días de su grupo (nada de pecho el día de tirón). Empuje: pecho, deltoides
+  anterior y lateral, tríceps. Tirón: dorsal, espalda alta, deltoides posterior, bíceps. Piernas:
+  todo el tren inferior y abdominales.
+
 ### 3.3 Series y ejercicios dentro de una sesión 🔜
 
 - Las series de un músculo en un día **no son un solo ejercicio**: se reparten en varios ejercicios
@@ -95,8 +112,7 @@ arme:
 - **Pecho:** ejercicios con **leve inclinación**, para trabajar el pecho completo con énfasis en el
   pectoral superior. Ej.: press inclinado con mancuernas o con barra (a elección) + pec fly.
 
-**Principiante:** tocar **todos los músculos**, priorizando **multiarticulares** que cubran varios a
-la vez (§8).
+**Principiante:** ver §3.5.
 
 **Orden por músculo** (validado por el coach; entran los primeros según la cantidad de ejercicios):
 
@@ -116,11 +132,37 @@ la vez (§8).
 | Gemelos | — | Elevación de talones de pie · sentado |
 | Abdominales | — | Crunch en polea · Elevación de piernas colgado |
 
+### 3.5 Rutinas del principiante ✅
+
+Definido por el coach: lo ideal para el principiante es **cuerpo completo**, un poco de todo repartido
+en los días, **3–4 series por ejercicio** y **pocos ejercicios**. Hace multiarticulares que trabajan
+varios músculos a la vez, así que **como mucho un aislamiento por músculo**. La app le arma las
+rutinas sola al terminar el onboarding: no sabe armarlas.
+
+La división es la de §3.2 (siempre con enfoque general). Los días de cuerpo completo rotan A → B → C:
+
+| Día | Ejercicios |
+|---|---|
+| Cuerpo completo A | Sentadilla 4 · Press inclinado con mancuernas 4 · Jalón al pecho 4 · Elevaciones laterales 3 · Extensión de tríceps en polea 3 |
+| Cuerpo completo B | Peso muerto rumano 4 · Press militar 4 · Remo con barra 4 · Curl con barra 3 · Elevación de talones de pie 3 |
+| Cuerpo completo C | Prensa 4 · Press inclinado con barra 4 · Remo sentado en polea 4 · Hip thrust 3 · Crunch en polea 3 |
+| Empuje | Press inclinado con mancuernas 4 · Press militar 4 · Pec deck 3 · Elevaciones laterales 3 · Extensión de tríceps en polea 3 |
+| Tirón | Jalón al pecho 4 · Remo con barra 4 · Remo sentado en polea 3 · Face pull 3 · Curl con barra 3 |
+| Piernas | Sentadilla 4 · Peso muerto rumano 4 · Hip thrust 3 · Elevación de talones de pie 3 · Crunch en polea 3 |
+| Superior (5–6 días) | Press inclinado con barra 4 · Remo sentado en polea 4 · Press militar 3 · Jalón al pecho 3 · Curl con mancuernas 3 |
+| Inferior (5–6 días) | Prensa 4 · Hip thrust 4 · Curl femoral sentado 3 · Elevación de talones sentado 3 · Elevación de piernas colgado 3 |
+
+Superior e inferior los propuso la app (§7). Como en cualquier rutina generada, el usuario puede
+cambiar o sumar ejercicios.
+
+**Cuando mejora**: a medida que se recupera mejor y progresa, se le suman series o ejercicios, o se
+pasa a una estructura de intermedio (§8).
+
 ## 4. Ejercicios
 
 ### 4.1 Músculo objetivo 🔜
 
-- Cada ejercicio cuenta para **un único músculo objetivo**.
+- Cada ejercicio cuenta para **un único músculo objetivo** (salvo en el principiante, §5.1).
 - El objetivo depende del **enfoque del ejercicio**: el hip thrust es de glúteo; la sentadilla
   búlgara puede ser de glúteo o de cuádriceps según la angulación, y eso **se especifica**.
 
@@ -163,21 +205,25 @@ Al principiante se le aplican estos rangos; el intermedio/avanzado usa el rango 
 - **No cuenta el volumen indirecto** de los multiarticulares (el press banca no suma a tríceps).
 - **No cuentan las series de calentamiento.**
 - Una serie con RIR alto **cuenta igual como efectiva** (ver §6.3).
+- **Principiante: todo cuenta** ✅. Hace un multiarticular y lo siente en todos los músculos
+  involucrados, así que cada serie cuenta completa para cada uno:
+
+| Ejercicio | Cuenta para |
+|---|---|
+| Press inclinado con mancuernas / con barra | pecho · deltoides anterior · tríceps |
+| Press militar | deltoides anterior · deltoides lateral · tríceps |
+| Jalón al pecho / dominadas | dorsal · bíceps |
+| Remo con barra / sentado en polea | espalda alta · dorsal · bíceps · deltoides posterior |
+| Sentadilla / prensa | cuádriceps · glúteo |
+| Peso muerto rumano | femoral · glúteo |
+| Hip thrust | glúteo · femoral |
 
 ### 5.2 Volumen inicial
 
-**Principiante** 🔜 — volumen alto a propósito: todavía no domina la técnica, la propiocepción ni la
-cercanía al fallo, así que más series menos efectivas acumulan un estímulo comparable al de pocas
-series bien exprimidas.
-
-| Días disponibles | Series semanales por músculo |
-|---|---|
-| 1–2 | 12 |
-| 3 | 14 |
-| 4 | 16 |
-| 5–6 | 18 |
-
-Es el mismo número para **todos** los músculos: el principiante no prioriza y nunca pasa de 18.
+**Principiante** ✅ — su volumen semanal es **lo que suman sus días** (§3.5), contando cada
+multiarticular para todos los músculos que trabaja (§5.1). Con 3 días, por ejemplo, el tríceps suma
+15 series (press inclinado, press militar, extensión) y los gemelos 3. Si cambia la cantidad de días,
+se recalcula.
 
 **Intermedio / Avanzado** 🔜 — **no se impone un rango**. Se parte del volumen que el usuario dice
 manejar (hay quien rinde con menos de 10 series semanales de pecho y quien necesita más; las dos
@@ -307,7 +353,11 @@ Detalles que las reglas no fijaban y se resolvieron en `packages/domain`. Son f�
 | Descarga descartada | Se vuelve a evaluar con lo que se entrene desde que se descartó | `apps/api/src/volume/adjustments.service.ts` |
 | Piso | Un ajuste nunca deja un músculo por debajo de 1 serie semanal | `apps/api/src/volume/volume.service.ts` |
 | Sesión sin rutina | Los ajustes quedan como sugerencia (el modo automático es de la rutina) | `apps/api/src/sessions/sessions.service.ts` |
-| Tipo de día | 1–2 días, o 3 sin prioridad: full body. Si no, alterna inferior/superior empezando por el tren priorizado (sin prioridad, por inferior) | `planning/planner.ts` |
+| Dónde va cada día de la división | Se mantiene la secuencia (empuje → tirón → piernas → cuerpo completo) pero se elige por cuál empieza, para que queden la menor cantidad de músculos en días seguidos (los priorizados pesan el doble) | `planning/planner.ts` |
+| 3 días con prioridad | Cuerpo completo igual: los priorizados van los 3 días y el resto 2 | `planning/planner.ts` |
+| 4 días con prioridad | Siempre empuje, tirón, piernas y cuerpo completo (cada tren tiene dos días); con el inferior priorizado, piernas va primero | `planning/planner.ts` |
+| Músculo fuera de su grupo | Nunca, salvo los priorizados, que pueden sumar el estímulo extra en otro día (como el glúteo en un día de tirón) | `planning/planner.ts` |
+| Días superior e inferior del principiante | Los ejercicios de la tabla de §3.5 | `planning/beginner.ts` |
 | Abdominales | Van con el tren inferior | `training/muscles.ts` |
 | Músculos chicos | Frecuencia 2 como el resto; la 3 queda para los priorizados | `planning/planner.ts` |
 | Series por ejercicio | 4 = 2 + 2; 7 = 3 + 2 + 2 | `planning/planner.ts` |
@@ -326,12 +376,12 @@ Detalles que las reglas no fijaban y se resolvieron en `packages/domain`. Son f�
 
 ## 8. Pendientes ❓
 
-- **Reparto por días**: el algoritmo concreto que asigna músculos a cada día según días disponibles
-  y prioridad (tren superior / inferior). Se propone en código y se valida con el coach.
 - **Selección de ejercicios** en rutinas generadas: qué ejercicios y ángulos elige la app para cada
   músculo (depende del catálogo).
-  - **Principiante** (definido por el coach): tocar **todos los músculos**, priorizando
-    **multiarticulares** que cubran varios a la vez.
+  - **Principiante** (definido por el coach): ver §3.5.
   - **Intermedio / avanzado** (definido por el coach): ver §3.4.
-  - Falta: el principiante usa por ahora el mismo orden (multiarticulares primero); queda pendiente
-    elegir multiarticulares que cubran **varios músculos a la vez** para acortar la sesión.
+- **Progresión del principiante**: cuándo sumarle series o ejercicios, o pasarlo a otra estructura.
+  Por ahora sus rutinas no cambian solas: los ajustes de volumen no tocan sus días armados.
+- **Día de cuerpo completo con 4 días** (intermedio / avanzado): junta la segunda vez de todos los
+  músculos, así que puede quedar mucho más cargado que los otros (ej. 36 series contra 8–9 de
+  empuje o tirón con el volumen de la demo).

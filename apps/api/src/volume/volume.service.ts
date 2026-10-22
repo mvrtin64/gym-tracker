@@ -1,4 +1,4 @@
-import { deloadState, MUSCLES, weeklySetsByMuscle, type Muscle, type WeeklyVolume } from '@gym/domain';
+import { deloadState, MUSCLES, musclesWorked, weeklySetsByMuscle, type Muscle, type WeeklyVolume } from '@gym/domain';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { toSetLog } from '../common/set-log';
 import { PrismaService } from '../prisma/prisma.service';
@@ -55,12 +55,22 @@ export class VolumeService {
     const target = active?.volume ?? base;
     const from = startOfWeek(now);
     const to = new Date(from.getTime() + 7 * DAY_MS);
-    const entries = await this.prisma.exerciseEntry.findMany({
-      where: { session: { userId, performedAt: { gte: from, lt: to } } },
-      include: { session: { select: { performedAt: true } }, sets: true },
-    });
+    const [entries, profile] = await Promise.all([
+      this.prisma.exerciseEntry.findMany({
+        where: { session: { userId, performedAt: { gte: from, lt: to } } },
+        include: { session: { select: { performedAt: true } }, sets: true, exercise: { select: { name: true } } },
+      }),
+      this.prisma.trainingProfile.findUnique({ where: { userId }, select: { level: true } }),
+    ]);
+    // Al principiante cada multiarticular le cuenta para todos los músculos que trabaja (§5.1).
+    const beginner = profile?.level === 'beginner';
     const done = weeklySetsByMuscle(
-      entries.map((e) => ({ performedAt: e.session.performedAt, targetMuscle: e.targetMuscle, sets: e.sets.map(toSetLog) })),
+      entries.map((e) => ({
+        performedAt: e.session.performedAt,
+        targetMuscle: e.targetMuscle,
+        muscles: beginner ? musclesWorked(e.exercise.name, e.targetMuscle) : undefined,
+        sets: e.sets.map(toSetLog),
+      })),
       from,
       to,
     );

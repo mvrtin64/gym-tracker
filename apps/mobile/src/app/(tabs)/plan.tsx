@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { Alert, ScrollView, Text, View } from 'react-native';
-import { useGenerateRoutines, usePlan, useRoutines } from '../../api/hooks';
+import { useGenerateRoutines, usePlan, useProfile, useRoutines } from '../../api/hooks';
 import { Button, Card, QueryState, styles } from '../../components/ui';
 import { colors, DAY_KIND_LABELS, MUSCLE_LABELS, spacing, WEEKDAY_LONG } from '../../theme';
 
@@ -56,6 +56,7 @@ export default function PlanScreen() {
 export function GenerateCard() {
   const routines = useRoutines();
   const generate = useGenerateRoutines();
+  const beginner = useProfile().data?.level === 'beginner';
   const hasGenerated = (routines.data ?? []).some((r) => r.origin === 'generated');
 
   const run = () =>
@@ -75,8 +76,10 @@ export function GenerateCard() {
     <Card style={{ gap: spacing.sm, borderColor: colors.accent }}>
       <Text style={styles.title}>Armá tus rutinas</Text>
       <Text style={styles.muted}>
-        Una rutina por día con 1 a 3 ejercicios por músculo: primero multiarticulares, después aislamiento. Después podés
-        cambiar cualquier ejercicio o sumar los tuyos.
+        {beginner
+          ? 'Una rutina por día con pocos ejercicios de 3 a 4 series: primero multiarticulares, que trabajan varios músculos a la vez.'
+          : 'Una rutina por día con 1 a 3 ejercicios por músculo: primero multiarticulares, después aislamiento.'}{' '}
+        Después podés cambiar cualquier ejercicio o sumar los tuyos.
       </Text>
       <Button
         title={generate.isPending ? 'Armando…' : hasGenerated ? 'Volver a armar mis rutinas' : 'Armar mis rutinas'}

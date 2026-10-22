@@ -1,4 +1,4 @@
-import { planWeek } from '@gym/domain';
+import { beginnerPlan, planWeek } from '@gym/domain';
 import { Controller, Get } from '@nestjs/common';
 import { CurrentUserId } from '../common/current-user.decorator';
 import { ProfileService } from '../profile/profile.service';
@@ -13,11 +13,12 @@ export class PlanController {
 
   /**
    * Vista previa de la semana: músculos y series de cada día según el perfil y el volumen actual.
-   * Los ejercicios los elige `POST /routines/generate` (docs/dominio.md §3.4).
+   * El principiante ve sus días armados (§3.5). Los ejercicios los elige `POST /routines/generate`
+   * (docs/dominio.md §3.4).
    */
   @Get()
   async preview(@CurrentUserId() userId: string) {
     const [profile, volume] = await Promise.all([this.profile.getDomain(userId), this.volume.effective(userId)]);
-    return planWeek(profile, volume);
+    return profile.level === 'beginner' ? beginnerPlan(profile.trainingDays) : planWeek(profile, volume);
   }
 }

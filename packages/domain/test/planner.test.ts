@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  alignKinds,
   areConsecutive,
   dayKinds,
+  dayTrains,
   initialVolume,
   MUSCLES,
   muscleRecord,
@@ -53,31 +55,61 @@ describe('helpers del planificador', () => {
     expect([1, 2, 3, 4, 5, 6, 7, 8].map(splitIntoExercises)).toEqual([[1], [2], [3], [2, 2], [3, 2], [3, 3], [3, 2, 2], [3, 3, 2]]);
   });
 
-  it('tipo de día según cantidad y prioridad', () => {
-    expect(dayKinds(3, null)).toEqual(['full', 'full', 'full']);
-    expect(dayKinds(3, 'lower')).toEqual(['lower', 'upper', 'lower']);
-    expect(dayKinds(4, 'upper')).toEqual(['upper', 'lower', 'upper', 'lower']);
+  it('división según cantidad de días y prioridad', () => {
+    expect(dayKinds(2, 'lower')).toEqual(['full', 'full']);
+    expect(dayKinds(3, 'lower')).toEqual(['full', 'full', 'full']);
+    expect(dayKinds(4, null)).toEqual(['push', 'pull', 'legs', 'full']);
+    expect(dayKinds(4, 'lower')).toEqual(['legs', 'push', 'pull', 'full']);
+    expect(dayKinds(5, 'upper')).toEqual(['push', 'pull', 'legs', 'upper', 'lower']);
+    expect(dayKinds(6, null)).toEqual(['push', 'pull', 'legs', 'upper', 'lower', 'full']);
+    // Con 6 se repite el día del tren priorizado.
+    expect(dayKinds(6, 'lower').filter((k) => k === 'legs' || k === 'lower')).toHaveLength(3);
+    expect(dayKinds(6, 'upper').filter((k) => k === 'upper')).toHaveLength(2);
+  });
+
+  it('qué músculos van en cada tipo de día', () => {
+    expect(dayTrains('push', 'chest')).toBe(true);
+    expect(dayTrains('push', 'lats')).toBe(false);
+    expect(dayTrains('pull', 'rear_delt')).toBe(true);
+    expect(dayTrains('legs', 'abs')).toBe(true);
+    expect(dayTrains('full', 'calves')).toBe(true);
+  });
+
+  it('ubica la división para no repetir músculos en días seguidos, sin cambiar la secuencia', () => {
+    // Lun, mié, vie, sáb: cuerpo completo el miércoles, lejos de los otros tres.
+    expect(alignKinds(['mon', 'wed', 'fri', 'sat'], ['push', 'pull', 'legs', 'full'])).toEqual(['legs', 'full', 'push', 'pull']);
+    // Sin días seguidos queda la secuencia original.
+    expect(alignKinds(['mon', 'wed', 'fri'], ['full', 'full', 'full'])).toEqual(['full', 'full', 'full']);
   });
 });
 
 describe('planWeek', () => {
-  it('caso A (lun, mar, jue, vie): el glúteo no llega a frecuencia 3 sin días seguidos → 6 + 6', () => {
+  it('caso A (lun, mar, jue, vie): el cuerpo completo siempre queda pegado a otro día, algo baja de frecuencia', () => {
     const plan = planWeek(lowerFocus(['mon', 'tue', 'thu', 'fri']), volume);
-    expect(plan.days.map((d) => d.kind)).toEqual(['lower', 'upper', 'lower', 'upper']);
-    expect(daysOf(plan, 'glutes')).toEqual(['mon', 'thu']);
+    expect(plan.days.map((d) => d.kind)).toEqual(['legs', 'push', 'pull', 'full']);
+    expect(daysOf(plan, 'glutes')).toEqual(['mon', 'fri']);
     expect(setsOf(plan, 'glutes')).toEqual([6, 6]);
-    expect(plan.frequencyChanges).toEqual([
-      { muscle: 'glutes', ideal: 3, actual: 2, reason: 'con los días elegidos tendría que entrenarse en días seguidos' },
-    ]);
+    // Tirón y cuerpo completo quedan seguidos: la espalda va un solo día.
+    expect(daysOf(plan, 'lats')).toEqual(['thu']);
+    expect(plan.frequencyChanges.map((c) => c.muscle)).toEqual(['glutes', 'lats', 'rear_delt', 'upper_back', 'biceps']);
   });
 
-  it('caso B (lun, mié, vie, sáb): glúteo 3 veces, con el estímulo extra en un día de superior', () => {
+  it('caso B (lun, mié, vie, sáb): glúteo 3 veces, con el estímulo extra en un día de tirón', () => {
     const plan = planWeek(lowerFocus(['sat', 'mon', 'fri', 'wed']), volume);
-    expect(plan.days.map((d) => `${d.weekday}:${d.kind}`)).toEqual(['mon:lower', 'wed:upper', 'fri:lower', 'sat:upper']);
+    expect(plan.days.map((d) => `${d.weekday}:${d.kind}`)).toEqual(['mon:pull', 'wed:full', 'fri:legs', 'sat:push']);
     expect(daysOf(plan, 'glutes')).toEqual(['mon', 'wed', 'fri']);
     expect(setsOf(plan, 'glutes')).toEqual([4, 4, 4]);
     expect(daysOf(plan, 'chest')).toEqual(['wed', 'sat']);
     expect(plan.frequencyChanges).toEqual([]);
+  });
+
+  it('un músculo no priorizado nunca va en un día que no es de su grupo', () => {
+    for (const trainingDays of [['mon', 'tue', 'thu', 'fri'], ['mon', 'tue', 'wed', 'thu', 'fri', 'sat']] as Weekday[][]) {
+      const plan = planWeek(lowerFocus(trainingDays), volume);
+      for (const day of plan.days) {
+        for (const m of day.muscles) if (m.muscle !== 'glutes') expect(dayTrains(day.kind, m.muscle)).toBe(true);
+      }
+    }
   });
 
   it('lo que sobra va al día de énfasis y cada día se divide en ejercicios', () => {
@@ -92,13 +124,6 @@ describe('planWeek', () => {
     expect(setsOf(plan, 'biceps')).toEqual([3]);
     expect(setsOf(plan, 'front_delt')).toEqual([4]); // mínimo 3 por sesión
     expect(plan.frequencyChanges.map((c) => c.muscle)).toEqual(['front_delt', 'biceps']);
-  });
-
-  it('principiante: cuerpo completo, todo con frecuencia 2 y nada priorizado', () => {
-    const profile: TrainingProfile = { level: 'beginner', trainingDays: ['mon', 'wed', 'fri'], focus: 'lower', priorityMuscles: ['glutes'] };
-    const plan = planWeek(profile, initialVolume(profile));
-    expect(plan.days.every((d) => d.kind === 'full')).toBe(true);
-    for (const m of MUSCLES) expect(setsOf(plan, m)).toEqual([7, 7]);
   });
 
   it('1 día: todo en un full body', () => {
