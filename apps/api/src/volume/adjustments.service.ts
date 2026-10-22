@@ -1,6 +1,7 @@
 import {
-  decideBeginnerGrowth, decideMuscleVolume, decideSoreness, DELOAD_DAYS, detectGeneralStagnation, exerciseHistory,
-  GROWTH_EXERCISE_SETS, growthExercise, MAX_EXERCISES_PER_MUSCLE, muscleHistories, musclesWorked, type Muscle, type Soreness,
+  decideBeginnerGrowth, decideMuscleVolume, decideSoreness, DELOAD_DAYS, detectGeneralStagnation, GROWTH_EXERCISE_SETS,
+  growthExercise, MAX_EXERCISES_PER_MUSCLE, muscleHistories, musclesWorked, placeGrowth, type GrowthSlot, type Muscle,
+  type Soreness,
 } from '@gym/domain';
 import { Injectable } from '@nestjs/common';
 import { toSetLog } from '../common/set-log';
@@ -27,16 +28,18 @@ function sorenessHistory(
 /** Cuánta historia se mira: sobra para las últimas sesiones de cada músculo y la ventana de 2 semanas. */
 const HISTORY_DAYS = 42;
 
-/** Lo que se le sumó a un ejercicio del principiante que viene progresando (§5.4). */
+/** La serie por semana que se le sumó a un músculo del principiante que viene progresando (§5.4). */
 export interface GrowthItem {
-  exerciseId: string;
-  exerciseName: string;
-  targetMuscle: Muscle;
+  muscle: Muscle;
+  /** La rutina (el día) donde quedó. */
+  routineId: string;
+  routineName: string;
+  /** `add_set`: una serie más en `exerciseName`. `add_exercise`: entró `exerciseName` y `from` le pasó una serie. */
   kind: 'add_set' | 'add_exercise';
-  /** Series del ejercicio (con `add_set`, ya con la nueva). */
+  exerciseName: string;
+  /** Series de `exerciseName` después del cambio. */
   sets: number;
-  /** El ejercicio que se sumó, con `add_exercise`. */
-  added?: { exerciseId: string; exerciseName: string; sets: number };
+  from?: { exerciseName: string; sets: number };
   reason: string;
 }
 
@@ -124,86 +127,117 @@ export class AdjustmentsService {
   }
 
   /**
-   * Principiante con una rutina en modo automático (§5.4): a cada ejercicio de la rutina que hizo y
-   * viene progresando cerca del fallo, se le suma una serie; si ya tiene 4, se suma un analítico del
-   * mismo músculo (sin pasar de 3 ejercicios por músculo). El objetivo semanal sube con la rutina.
-   * Después de cualquier cambio en el músculo, se vuelve a contar desde cero.
+   * Principiante (§5.4): a cada músculo que entrenó y viene progresando cerca del fallo se le suma
+   * +1 serie por semana. La serie va al ejercicio de ese músculo con menos series de toda la semana
+   * (en sus rutinas automáticas), para no cargar una sola sesión; si todos tienen 4, entra un analítico
+   * en el día más liviano. El objetivo semanal sube con la rutina. Después de cualquier cambio en el
+   * músculo, se vuelve a contar desde cero.
    */
-  async growBeginner(userId: string, routineId: string, trained: string[], now = new Date()): Promise<GrowthItem[]> {
-    const routine = await this.prisma.routine.findFirst({
-      where: { id: routineId, userId },
-      include: { exercises: { orderBy: { position: 'asc' }, include: { exercise: true } } },
-    });
-    if (!routine) return [];
-    const [sessions, changes, catalog] = await Promise.all([
+  async growBeginner(userId: string, trained: Muscle[], now = new Date()): Promise<GrowthItem[]> {
+    const [routines, sessions, changes, catalog] = await Promise.all([
+      this.prisma.routine.findMany({
+        where: { userId, adjustMode: 'auto' },
+        include: { exercises: { orderBy: { position: 'asc' }, include: { exercise: true } } },
+      }),
       this.recentSessions(userId, now),
       this.prisma.volumeChange.findMany({ where: { userId } }),
       this.prisma.exercise.findMany({ where: visibleTo(userId) }),
     ]);
-
-    const inRoutine = new Set(routine.exercises.map((e) => e.exerciseId));
-    const perMuscle = new Map<Muscle, number>();
-    for (const e of routine.exercises) perMuscle.set(e.targetMuscle, (perMuscle.get(e.targetMuscle) ?? 0) + 1);
+    const histories = muscleHistories(sessions);
+    const routineSets = (r: (typeof routines)[number]) => r.exercises.reduce((sum, e) => sum + e.sets, 0);
 
     const result: GrowthItem[] = [];
-    // Van en orden de posición: cada ejercicio que se inserta corre un lugar a los que siguen.
-    let inserted = 0;
-    for (const item of routine.exercises.filter((e) => trained.includes(e.exerciseId))) {
-      const muscle = item.targetMuscle;
+    for (const muscle of new Set(trained)) {
       const lastChange = Math.max(0, ...changes.filter((c) => c.muscle === muscle).map((c) => (c.decidedAt ?? c.createdAt).getTime()));
-      const history = exerciseHistory(sessions, item.exerciseId).filter((s) => s.performedAt.getTime() > lastChange);
-      const decision = decideBeginnerGrowth(history, item.sets);
+      const history = (histories[muscle] ?? []).filter((s) => s.performedAt.getTime() > lastChange);
+      const decision = decideBeginnerGrowth(history);
       if (decision.kind === 'keep') continue;
 
-      if (decision.kind === 'add_set') {
-        await this.prisma.routineExercise.update({
-          where: { routineId_exerciseId: { routineId, exerciseId: item.exerciseId } },
-          data: { sets: item.sets + 1 },
-        });
-        await this.grow(userId, muscle, musclesWorked(item.exercise.name, muscle), 1, decision.reason, now);
-        result.push({ exerciseId: item.exerciseId, exerciseName: item.exercise.name, targetMuscle: muscle, kind: 'add_set', sets: item.sets + 1, reason: decision.reason });
-        continue;
-      }
+      const slots: GrowthSlot[] = routines.flatMap((r) =>
+        r.exercises
+          .filter((e) => e.targetMuscle === muscle)
+          .map((e) => ({ routineId: r.id, exerciseId: e.exerciseId, position: e.position, sets: e.sets, routineSets: routineSets(r) })),
+      );
+      const full = new Set(
+        routines.filter((r) => r.exercises.filter((e) => e.targetMuscle === muscle).length >= MAX_EXERCISES_PER_MUSCLE).map((r) => r.id),
+      );
+      const placement = placeGrowth(slots, full);
+      if (!placement) continue;
 
-      if ((perMuscle.get(muscle) ?? 0) >= MAX_EXERCISES_PER_MUSCLE) continue;
-      const added = growthExercise(muscle, catalog, inRoutine);
-      if (!added) continue;
-      // Entra justo después del ejercicio que viene progresando.
-      const position = item.position + inserted;
-      await this.prisma.$transaction([
-        this.prisma.routineExercise.updateMany({ where: { routineId, position: { gt: position } }, data: { position: { increment: 1 } } }),
-        this.prisma.routineExercise.create({
-          data: {
-            routineId,
-            exerciseId: added.id,
-            position: position + 1,
-            targetMuscle: muscle,
-            ...defaultPrescription(added.type),
-            sets: GROWTH_EXERCISE_SETS,
-          },
-        }),
-      ]);
-      inRoutine.add(added.id);
-      inserted++;
-      perMuscle.set(muscle, (perMuscle.get(muscle) ?? 0) + 1);
-      await this.grow(userId, muscle, musclesWorked(added.name, muscle), GROWTH_EXERCISE_SETS, decision.reason, now);
-      result.push({
-        exerciseId: item.exerciseId,
-        exerciseName: item.exercise.name,
-        targetMuscle: muscle,
-        kind: 'add_exercise',
-        sets: item.sets,
-        added: { exerciseId: added.id, exerciseName: added.name, sets: GROWTH_EXERCISE_SETS },
-        reason: decision.reason,
-      });
+      const target = placement.kind === 'add_set' ? placement.slot : placement.from;
+      const routine = routines.find((r) => r.id === target.routineId)!;
+      const current = routine.exercises.find((e) => e.exerciseId === target.exerciseId)!;
+      const deltas = new Map<Muscle, number>();
+      const addDelta = (muscles: Muscle[], sets: number) => muscles.forEach((m) => deltas.set(m, (deltas.get(m) ?? 0) + sets));
+
+      if (placement.kind === 'add_set') {
+        await this.prisma.routineExercise.update({
+          where: { routineId_exerciseId: { routineId: routine.id, exerciseId: current.exerciseId } },
+          data: { sets: current.sets + 1 },
+        });
+        // Los que crecen después en esta misma sesión ven el cambio.
+        current.sets += 1;
+        addDelta(musclesWorked(current.exercise.name, muscle), 1);
+        result.push({
+          muscle,
+          routineId: routine.id,
+          routineName: routine.name,
+          kind: 'add_set',
+          exerciseName: current.exercise.name,
+          sets: current.sets,
+          reason: decision.reason,
+        });
+      } else {
+        const added = growthExercise(muscle, catalog, new Set(routine.exercises.map((e) => e.exerciseId)));
+        if (!added) continue;
+        // Entra justo después del de 4, que le pasa una serie: la semana sube de a una.
+        await this.prisma.$transaction([
+          this.prisma.routineExercise.update({
+            where: { routineId_exerciseId: { routineId: routine.id, exerciseId: current.exerciseId } },
+            data: { sets: current.sets - 1 },
+          }),
+          this.prisma.routineExercise.updateMany({
+            where: { routineId: routine.id, position: { gt: current.position } },
+            data: { position: { increment: 1 } },
+          }),
+          this.prisma.routineExercise.create({
+            data: {
+              routineId: routine.id,
+              exerciseId: added.id,
+              position: current.position + 1,
+              targetMuscle: muscle,
+              ...defaultPrescription(added.type),
+              sets: GROWTH_EXERCISE_SETS,
+            },
+          }),
+        ]);
+        current.sets -= 1;
+        for (const e of routine.exercises) if (e.position > current.position) e.position += 1;
+        routine.exercises.push({
+          ...current,
+          exerciseId: added.id,
+          exercise: added,
+          position: current.position + 1,
+          targetMuscle: muscle,
+          sets: GROWTH_EXERCISE_SETS,
+        });
+        addDelta(musclesWorked(current.exercise.name, muscle), -1);
+        addDelta(musclesWorked(added.name, muscle), GROWTH_EXERCISE_SETS);
+        result.push({
+          muscle,
+          routineId: routine.id,
+          routineName: routine.name,
+          kind: 'add_exercise',
+          exerciseName: added.name,
+          sets: GROWTH_EXERCISE_SETS,
+          from: { exerciseName: current.exercise.name, sets: current.sets },
+          reason: decision.reason,
+        });
+      }
+      for (const [m, delta] of deltas) if (delta !== 0) await this.volume.applyDelta(userId, m, delta);
+      await this.prisma.volumeChange.create({ data: { userId, muscle, delta: 1, reason: decision.reason, status: 'applied', decidedAt: now } });
     }
     return result;
-  }
-
-  /** Sube el objetivo de los músculos que suma lo agregado y deja el cambio en el historial del músculo. */
-  private async grow(userId: string, muscle: Muscle, muscles: Muscle[], sets: number, reason: string, now: Date) {
-    for (const m of muscles) await this.volume.applyDelta(userId, m, sets);
-    await this.prisma.volumeChange.create({ data: { userId, muscle, delta: sets, reason, status: 'applied', decidedAt: now } });
   }
 
   /** Sesiones normales (sin descarga) desde la última descarga: después de una se arranca de cero. */

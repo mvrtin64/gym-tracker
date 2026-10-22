@@ -261,10 +261,12 @@ ejercicio, no de la semana.
 
 Definido por el coach. El parámetro es si **sesión a sesión va sumando peso y/o repeticiones**:
 
-- Si un ejercicio de su rutina lleva **dos sesiones seguidas progresando** y llega **cerca del fallo**
-  (está llegando sobrado: se recupera bien), se le **suma una serie**.
-- Si ese ejercicio ya tiene **4 series**, en vez de otra serie se le **suma otro ejercicio** que ataque
-  el mismo músculo, preferentemente un **analítico**.
+- Si un músculo lleva **dos sesiones seguidas progresando** y llega **cerca del fallo** (está llegando
+  sobrado: se recupera bien), sube su **volumen semanal: +1 serie**.
+- No se sube de golpe en una sesión: esa serie se **reparte en los ejercicios de la semana**. Va al
+  ejercicio del músculo con menos series.
+- Si todos sus ejercicios ya tienen **4 series**, se **suma otro ejercicio** que ataque el mismo
+  músculo, preferentemente un **analítico**.
 - Un principiante se va formando de forma constante en **3–6 meses** de entrenamiento.
 
 Detalles en §7. Es lo único en que la app suma volumen sola; para el resto, solo baja (§5.3).
@@ -389,7 +391,10 @@ Detalles que las reglas no fijaban y se resolvieron en `packages/domain`. Son f�
 | Agujetas y estancamiento a la vez | Se suman en un solo cambio de ese músculo, con el mismo máximo de −2 series | `apps/api/src/volume/adjustments.service.ts` |
 | "Cerca del fallo" para crecer | RIR promedio de 2 o menos en las dos sesiones ("al fallo" o "1-2 más"); sin RIR registrado no se suma | `volume/growth.ts` |
 | Qué cuenta como progresar | Lo mismo que la comparación con la última vez: más peso máximo, o más reps con el mismo peso | `progression/comparison.ts` |
-| Ejercicio que se suma | Un analítico del mismo músculo que no esté en la rutina, en el orden recomendado (§3.4); entra con 3 series, justo después | `planning/selection.ts` |
+| Qué se evalúa | Cada músculo que entrenó en la sesión, con sus ejercicios de esa sesión (como el ajuste de §5.3) | `volume/growth.ts` |
+| Dónde va la serie | En sus rutinas automáticas de la semana: el ejercicio del músculo con menos series (menos de 4); si empatan, el del día más liviano | `volume/growth.ts` |
+| Ejercicio que se suma | Con todos en 4: un analítico del mismo músculo que no esté en esa rutina, en el orden recomendado (§3.4), en el día más liviano y justo después del de 4. Entra con 2 series: la nueva más una que le pasa el de 4, así la semana sube de a una. Si el de 4 es un multiarticular, los otros músculos que trabaja bajan esa serie | `volume/growth.ts`, `planning/selection.ts` |
+| Varios músculos a la vez | Cada uno suma su serie; si todos se entrenan el mismo día, ese día crece más | `apps/api/src/volume/adjustments.service.ts` |
 | Tope al sumar ejercicios | Nunca más de 3 ejercicios por músculo en una rutina | `apps/api/src/volume/adjustments.service.ts` |
 | Después de sumar | Se vuelve a contar desde cero: hacen falta otras dos sesiones progresando. Si en la misma sesión se bajó el volumen del músculo, no se suma | `apps/api/src/volume/adjustments.service.ts` |
 | Objetivo semanal al crecer | Sube con la rutina, contando para todos los músculos que trabaja lo que se sumó (§5.1) | `apps/api/src/volume/adjustments.service.ts` |

@@ -132,11 +132,12 @@ export function ReviewCard({ review }: { review: SessionReviewDto }) {
     <Card style={{ gap: spacing.md, borderColor: colors.warning }}>
       <Text style={styles.title}>Ajustes</Text>
       {growth.map((g) => (
-        <View key={g.exerciseId} style={{ gap: 2 }}>
+        <View key={g.muscle} style={{ gap: 2 }}>
           <Text style={styles.text}>
+            📈 {MUSCLE_LABELS[g.muscle]}: +1 serie por semana.{' '}
             {g.kind === 'add_set'
-              ? `📈 ${g.exerciseName}: la próxima vez son ${sets(g.sets)}.`
-              : `📈 ${MUSCLE_LABELS[g.targetMuscle]}: se sumó ${g.added!.exerciseName} (${sets(g.added!.sets)}) después de ${g.exerciseName}.`}
+              ? `${g.exerciseName} pasa a ${sets(g.sets)} (${g.routineName}).`
+              : `Entra ${g.exerciseName} con ${sets(g.sets)} (${g.routineName}); ${g.from!.exerciseName} queda en ${sets(g.from!.sets)}.`}
           </Text>
           <Text style={styles.muted}>{g.reason}</Text>
         </View>

@@ -88,7 +88,7 @@ export function selectExercises(
  * músculo que no esté en la rutina, en el orden recomendado; si no hay, cualquiera que cuente para el
  * músculo. `null` si no queda ninguno.
  */
-export function growthExercise(muscle: Muscle, catalog: CatalogExercise[], exclude: Set<string>): CatalogExercise | null {
+export function growthExercise<T extends CatalogExercise>(muscle: Muscle, catalog: T[], exclude: Set<string>): T | null {
   const recommended = (e: CatalogExercise) => {
     const i = RECOMMENDED_EXERCISES[muscle].indexOf(e.name);
     return i === -1 ? Infinity : i;

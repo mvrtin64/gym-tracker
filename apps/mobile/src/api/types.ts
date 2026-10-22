@@ -174,13 +174,16 @@ export interface SessionReviewDto {
   growth: GrowthDto[];
 }
 
+/** +1 serie por semana para un músculo, y en qué día quedó. */
 export interface GrowthDto {
-  exerciseId: string;
-  exerciseName: string;
-  targetMuscle: Muscle;
+  muscle: Muscle;
+  routineId: string;
+  routineName: string;
+  /** `add_set`: una serie más en `exerciseName`. `add_exercise`: entró `exerciseName` y `from` le pasó una serie. */
   kind: 'add_set' | 'add_exercise';
+  exerciseName: string;
   sets: number;
-  added?: { exerciseId: string; exerciseName: string; sets: number };
+  from?: { exerciseName: string; sets: number };
   reason: string;
 }
 
