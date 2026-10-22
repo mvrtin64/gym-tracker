@@ -1,7 +1,7 @@
 import {
   FOCUSES, LEVELS, MAX_TRAINING_DAYS, MUSCLES, muscleRecord, WEEKDAYS, type Focus, type Level, type Muscle, type Weekday,
 } from '@gym/domain';
-import { router, Stack } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -38,6 +38,8 @@ const byWeekOrder = (days: Weekday[]) => [...days].sort((a, b) => WEEKDAYS.index
  */
 export default function OnboardingScreen() {
   const profile = useProfile();
+  // Desde la sugerencia de pasar a intermedio se llega con el nivel ya elegido.
+  const params = useLocalSearchParams<{ level?: Level }>();
   const save = useSaveProfile();
   const generate = useGenerateRoutines();
   // El volumen se pregunta solo la primera vez: después se ajusta desde la semana, no desde el perfil.
@@ -55,13 +57,13 @@ export default function OnboardingScreen() {
   useEffect(() => {
     const p = profile.data;
     if (!p) return;
-    setLevel(p.level);
+    setLevel(params.level ?? p.level);
     setDays(p.trainingDays);
     setFocus(p.focus);
     setPriority(p.priorityMuscles);
     setRepMin(p.preferredRepMin?.toString() ?? '');
     setRepMax(p.preferredRepMax?.toString() ?? '');
-  }, [profile.data]);
+  }, [profile.data, params.level]);
 
   const experienced = level === 'intermediate' || level === 'advanced';
   const steps: StepId[] = [

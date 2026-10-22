@@ -1,8 +1,8 @@
 import { WEEKDAYS, type Weekday } from '@gym/domain';
 import { Redirect, router } from 'expo-router';
-import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Alert, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useProfile, useRoutines, useVolume } from '../../api/hooks';
+import { useDismissLevelUp, useProfile, useRoutines, useVolume } from '../../api/hooks';
 import type { ProfileDto, VolumeSummaryDto } from '../../api/types';
 import { DeloadCard, PendingChanges } from '../../components/adjustments';
 import { Button, Card, ProgressBar, QueryState, ScreenHeader, styles } from '../../components/ui';
@@ -45,6 +45,7 @@ function Today({ profile }: { profile: ProfileDto }) {
           refreshControl={<RefreshControl refreshing={routines.isRefetching} onRefresh={refetch} tintColor={colors.accent} />}>
           <ScreenHeader overline={longDate()} title="Hoy" />
 
+          {profile.levelUpSuggested && <LevelUpCard />}
           {volume.data.deload && <DeloadCard deload={volume.data.deload} />}
           <PendingChanges changes={volume.data.pendingChanges} />
 
@@ -66,6 +67,29 @@ function Today({ profile }: { profile: ProfileDto }) {
         </ScrollView>
       )}
     </SafeAreaView>
+  );
+}
+
+/**
+ * A los 3 meses el principiante ya formó la base (§5.5): se le sugiere pasar a intermedio, que
+ * maneja su propio volumen. Es solo una sugerencia; "ahora no" la pospone un mes.
+ */
+function LevelUpCard() {
+  const dismiss = useDismissLevelUp();
+  return (
+    <Card style={{ gap: spacing.sm, borderColor: colors.accent }}>
+      <Text style={styles.title}>¿Pasás a intermedio?</Text>
+      <Text style={styles.muted}>
+        Ya llevás 3 meses entrenando. Como intermedio anotás el esfuerzo con RPE, elegís un enfoque y manejás tu volumen semanal.
+      </Text>
+      <Button title="Pasar a intermedio" onPress={() => router.push({ pathname: '/onboarding', params: { level: 'intermediate' } })} />
+      <Button
+        title="Ahora no"
+        variant="ghost"
+        disabled={dismiss.isPending}
+        onPress={() => dismiss.mutate(undefined, { onError: (e) => Alert.alert('No se guardó', e.message) })}
+      />
+    </Card>
   );
 }
 

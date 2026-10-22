@@ -53,6 +53,8 @@ El modo de ajuste es un dato de la rutina: tiene un valor por defecto según el 
 lo puede cambiar (ej. un principiante que aprendió y pasa a "solo sugerencias").
 
 El usuario **siempre** puede sumar o restar series; la lógica de sobrecarga se mantiene igual.
+**La app sugiere, pero el usuario arma la rutina a su gusto**: desde el entrenamiento puede cambiar
+las series de un ejercicio, cambiarlo por otro, sumar uno o quitarlo, y queda guardado en la rutina.
 
 ### 3.2 Generación de la semana 🔜
 
@@ -157,7 +159,7 @@ de glúteo, uno de femoral, dos de cuádriceps y uno de gemelos. Son la base: co
 generada, el usuario puede cambiar ejercicios o sumar series y ejercicios.
 
 **Cuando mejora**: a medida que se recupera mejor y progresa, se le suman series o ejercicios (§5.4),
-o se pasa a una estructura de intermedio (§8).
+o se pasa a una estructura de intermedio (§5.5).
 
 ## 4. Ejercicios
 
@@ -270,6 +272,12 @@ Definido por el coach. El parámetro es si **sesión a sesión va sumando peso y
 - Un principiante se va formando de forma constante en **3–6 meses** de entrenamiento.
 
 Detalles en §7. Es lo único en que la app suma volumen sola; para el resto, solo baja (§5.3).
+
+### 5.5 Pasar a intermedio ✅
+
+El principiante se forma en **3–6 meses**. A los **3 meses de su primera sesión** la app le
+**sugiere** pasar a intermedio: desde ahí anota el esfuerzo con RPE, elige un enfoque y maneja su
+volumen. Es solo una sugerencia: si dice "ahora no", se le vuelve a ofrecer en un mes. Detalles en §7.
 
 ## 6. Progresión y feedback
 
@@ -399,6 +407,8 @@ Detalles que las reglas no fijaban y se resolvieron en `packages/domain`. Son f�
 | Después de sumar | Se vuelve a contar desde cero: hacen falta otras dos sesiones progresando. Si en la misma sesión se bajó el volumen del músculo, no se suma | `apps/api/src/volume/adjustments.service.ts` |
 | Objetivo semanal al crecer | Sube con la rutina, contando para todos los músculos que trabaja lo que se sumó (§5.1) | `apps/api/src/volume/adjustments.service.ts` |
 | Rutinas en que crece | Solo las de modo automático (las que arma la app); las propias no se tocan | `apps/api/src/sessions/sessions.service.ts` |
+| Cambios a mano en la rutina | Cambiar series, sacar o sumar ejercicios no toca el objetivo semanal: la rutina es del usuario y el objetivo lo sigue ajustando el feedback. Tiene que quedar al menos un ejercicio | `apps/api/src/routines/routines.service.ts` |
+| Cuándo sugerir pasar a intermedio | A los 90 días de la primera sesión registrada; "ahora no" la pospone 30 días. Al pasar, el volumen que tenía se mantiene | `planning/beginner.ts` |
 
 ## 8. Pendientes ❓
 
@@ -406,5 +416,5 @@ Detalles que las reglas no fijaban y se resolvieron en `packages/domain`. Son f�
   músculo (depende del catálogo).
   - **Principiante** (definido por el coach): ver §3.5.
   - **Intermedio / avanzado** (definido por el coach): ver §3.4.
-- **Paso del principiante a otra estructura**: el coach considera que se forma en 3–6 meses. Falta
-  definir qué hace la app (ej. sugerirle pasar a intermedio) y cuándo.
+- **Paso del principiante a otra estructura**: definido en §5.5; queda validar los 90 días y qué
+  pasa con sus rutinas automáticas al pasar (hoy siguen igual, pero ya no crecen solas).

@@ -1,4 +1,4 @@
-import { initialVolume, MUSCLES, normalizeProfile, type TrainingProfile, type WeeklyVolume } from '@gym/domain';
+import { initialVolume, MUSCLES, normalizeProfile, suggestLevelUp, type TrainingProfile, type WeeklyVolume } from '@gym/domain';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { TrainingProfile as ProfileRow } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -34,6 +34,20 @@ export class ProfileService {
     const row = await this.prisma.trainingProfile.findUnique({ where: { userId } });
     if (!row) throw new NotFoundException('Todavía no completaste el onboarding');
     return row;
+  }
+
+  /** El perfil y si corresponde sugerirle pasar a intermedio (§5.5). */
+  async getWithSuggestion(userId: string, now = new Date()) {
+    const row = await this.get(userId);
+    const first = row.level === 'beginner'
+      ? await this.prisma.workoutSession.findFirst({ where: { userId }, orderBy: { performedAt: 'asc' }, select: { performedAt: true } })
+      : null;
+    return { ...row, levelUpSuggested: row.level === 'beginner' && suggestLevelUp(first?.performedAt ?? null, row.levelUpDismissedAt, now) };
+  }
+
+  async dismissLevelUp(userId: string) {
+    await this.get(userId);
+    await this.prisma.trainingProfile.update({ where: { userId }, data: { levelUpDismissedAt: new Date() } });
   }
 
   async getDomain(userId: string): Promise<TrainingProfile> {
