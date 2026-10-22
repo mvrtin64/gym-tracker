@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
 import { CurrentUserId } from '../common/current-user.decorator';
 import { CreateRoutineDto, RoutineExerciseDto } from './dto/create-routine.dto';
 import { ReplaceExerciseDto } from './dto/replace-exercise.dto';
+import { UpdateRoutineExerciseDto } from './dto/update-exercise.dto';
 import { RoutinesService } from './routines.service';
 
 @Controller('routines')
@@ -46,6 +47,26 @@ export class RoutinesController {
     @Body() dto: ReplaceExerciseDto,
   ) {
     return this.routines.replaceExercise(userId, id, exerciseId, dto.exerciseId);
+  }
+
+  @Patch(':id/exercises/:exerciseId')
+  updateExercise(
+    @CurrentUserId() userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('exerciseId', ParseUUIDPipe) exerciseId: string,
+    @Body() dto: UpdateRoutineExerciseDto,
+  ) {
+    return this.routines.updateExercise(userId, id, exerciseId, dto.sets);
+  }
+
+  @Delete(':id/exercises/:exerciseId')
+  @HttpCode(204)
+  removeExercise(
+    @CurrentUserId() userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('exerciseId', ParseUUIDPipe) exerciseId: string,
+  ) {
+    return this.routines.removeExercise(userId, id, exerciseId);
   }
 
   @Get(':id/workout')

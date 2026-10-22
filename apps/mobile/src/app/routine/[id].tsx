@@ -6,12 +6,13 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import {
-  useAddRoutineExercise, useAlternatives, useExercises, useLogSession, useProfile, useReplaceExercise, useWorkout,
+  useAddRoutineExercise, useAlternatives, useExercises, useLogSession, useProfile, useRemoveRoutineExercise,
+  useReplaceExercise, useUpdateRoutineExercise, useWorkout,
 } from '../../api/hooks';
 import type { NewSet, SessionReviewDto, WorkoutDto } from '../../api/types';
 import { JointPainCard, ReviewCard } from '../../components/adjustments';
 import {
-  Button, Card, Chips, Icon, MuscleTag, OptionGrid, Pill, QueryState, ScreenHeader, Sheet, styles,
+  Button, Card, Chips, Icon, MuscleTag, OptionGrid, Pill, QueryState, ScreenHeader, Sheet, Stepper, styles,
 } from '../../components/ui';
 import {
   colors, COMPARISON_UI, DECISION_UI, FEEL_LABELS, JOINT_PAIN_LABELS, MUSCLE_LABELS, radius, SORENESS_LABELS, spacing,
@@ -34,12 +35,12 @@ interface Result {
 }
 /**
  * Qué hoja está abierta: el feedback de una serie, su menú, las preguntas al terminar un músculo,
- * cambiar un ejercicio o agregar uno.
+ * editar un ejercicio de la rutina, cambiarlo o agregar uno.
  */
 type SheetState =
   | { kind: 'feedback' | 'menu'; exerciseId: string; index: number }
   | { kind: 'muscle'; muscle: Muscle }
-  | { kind: 'swap'; exerciseId: string }
+  | { kind: 'edit' | 'swap'; exerciseId: string }
   | { kind: 'add' }
   | null;
 
@@ -211,7 +212,7 @@ export default function WorkoutScreen() {
                 onUpdate={(index, patch) => updateRow(x.exercise.id, index, patch)}
                 onToggle={(index) => toggleDone(x.exercise.id, index)}
                 onOpen={(index, kind) => setSheet({ exerciseId: x.exercise.id, index, kind })}
-                onSwap={() => setSheet({ kind: 'swap', exerciseId: x.exercise.id })}
+                onEdit={() => setSheet({ kind: 'edit', exerciseId: x.exercise.id })}
                 onAdd={() =>
                   setRows((all) => {
                     const cur = all[x.exercise.id];
@@ -291,6 +292,17 @@ export default function WorkoutScreen() {
         )}
       </Sheet>
 
+      <EditSheet
+        routineId={id}
+        item={sheet?.kind === 'edit' ? data?.exercises.find((x) => x.exercise.id === sheet.exerciseId) ?? null : null}
+        onSwap={(exerciseId) => {
+          setSheet(null);
+          setTimeout(() => setSheet({ kind: 'swap', exerciseId }), SHEET_SWAP_MS);
+        }}
+        // Las series de hoy se rearman con las nuevas de la rutina (lo ya cargado de los demás se conserva).
+        onSetsSaved={(exerciseId) => setRows(({ [exerciseId]: _, ...rest }) => rest)}
+        onClose={() => setSheet(null)}
+      />
       <SwapSheet
         routineId={id}
         item={sheet?.kind === 'swap' ? data?.exercises.find((x) => x.exercise.id === sheet.exerciseId) ?? null : null}
@@ -341,6 +353,64 @@ const createOwn = (close: () => void) => {
   close();
   router.push('/new-exercise');
 };
+
+/**
+ * Editar un ejercicio en la rutina: la app sugiere, pero el usuario la arma a su gusto. Los cambios
+ * quedan para las próximas veces; agregar o borrar una serie desde la fila es solo para hoy.
+ */
+function EditSheet({ routineId, item, onSwap, onSetsSaved, onClose }: {
+  routineId: string;
+  item: WorkoutItem | null;
+  onSwap: (exerciseId: string) => void;
+  onSetsSaved: (exerciseId: string) => void;
+  onClose: () => void;
+}) {
+  const update = useUpdateRoutineExercise(routineId);
+  const remove = useRemoveRoutineExercise(routineId);
+  const [sets, setSets] = useState(0);
+  useEffect(() => { if (item) setSets(item.prescription.sets); }, [item]);
+  const busy = update.isPending || remove.isPending;
+
+  const saveSets = () => {
+    if (!item) return;
+    if (sets === item.prescription.sets) return onClose();
+    update.mutate(
+      { exerciseId: item.exercise.id, sets },
+      {
+        onSuccess: () => { onSetsSaved(item.exercise.id); onClose(); },
+        onError: (e) => Alert.alert('No se guardó', e.message),
+      },
+    );
+  };
+  const confirmRemove = () => {
+    if (!item) return;
+    Alert.alert(`¿Quitar ${item.exercise.name}?`, 'Sale de la rutina para las próximas veces.', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Quitar',
+        style: 'destructive',
+        onPress: () =>
+          remove.mutate(item.exercise.id, { onSuccess: onClose, onError: (e) => Alert.alert('No se pudo quitar', e.message) }),
+      },
+    ]);
+  };
+
+  return (
+    <Sheet visible={!!item} onClose={onClose} title={item?.exercise.name ?? ''} subtitle="Los cambios quedan guardados en la rutina.">
+      {item && (
+        <View style={{ gap: spacing.md }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={styles.label}>Series por sesión</Text>
+            <Stepper value={sets} onChange={setSets} min={1} max={10} />
+          </View>
+          <Button title={update.isPending ? 'Guardando…' : 'Guardar'} onPress={saveSets} disabled={busy} />
+          <Button title="Cambiar por otro ejercicio" variant="secondary" onPress={() => onSwap(item.exercise.id)} disabled={busy} />
+          <Button title="Quitar de la rutina" variant="ghost" onPress={confirmRemove} disabled={busy} />
+        </View>
+      )}
+    </Sheet>
+  );
+}
 
 /** Cambiar un ejercicio de la rutina por otro del mismo músculo, o por uno propio. */
 function SwapSheet({ routineId, item, onClose }: { routineId: string; item: WorkoutItem | null; onClose: () => void }) {
@@ -431,7 +501,7 @@ function AddSheet({ routineId, visible, inRoutine, onClose }: {
   );
 }
 
-function ExerciseBlock({ item, deloadWeek, rows, onUpdate, onToggle, onOpen, onAdd, onSwap }: {
+function ExerciseBlock({ item, deloadWeek, rows, onUpdate, onToggle, onOpen, onAdd, onEdit }: {
   item: WorkoutItem;
   deloadWeek: boolean;
   rows: Row[];
@@ -439,7 +509,7 @@ function ExerciseBlock({ item, deloadWeek, rows, onUpdate, onToggle, onOpen, onA
   onToggle: (index: number) => void;
   onOpen: (index: number, kind: 'feedback' | 'menu') => void;
   onAdd: () => void;
-  onSwap: () => void;
+  onEdit: () => void;
 }) {
   const { exercise, targetMuscle, prescription, note, target, previous, pain } = item;
   const prevSets = previous ? workingSets(previous.sets) : [];
@@ -458,8 +528,8 @@ function ExerciseBlock({ item, deloadWeek, rows, onUpdate, onToggle, onOpen, onA
                 <Text style={{ color: colors.accent, fontWeight: '600' }}>▶ Demo</Text>
               </Pressable>
             )}
-            <Pressable onPress={onSwap} hitSlop={8}>
-              <Text style={{ color: colors.accent, fontWeight: '600' }}>⇄ Cambiar</Text>
+            <Pressable onPress={onEdit} hitSlop={8}>
+              <Text style={{ color: colors.accent, fontWeight: '600' }}>✎ Editar</Text>
             </Pressable>
           </View>
         </View>

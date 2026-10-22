@@ -156,6 +156,22 @@ export function beginnerVolume(trainingDays: Weekday[]): WeeklyVolume {
   return volume;
 }
 
+/**
+ * A los cuántos días de su primera sesión se le sugiere pasar a intermedio (§5.5). El coach considera
+ * que un principiante se forma en 3–6 meses: se sugiere desde los 3 y el usuario decide.
+ */
+export const LEVEL_UP_AFTER_DAYS = 90;
+/** Si dice "ahora no", en cuántos días se le vuelve a sugerir. */
+export const LEVEL_UP_SNOOZE_DAYS = 30;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Si corresponde sugerirle al principiante pasar a intermedio. */
+export function suggestLevelUp(firstSessionAt: Date | null, dismissedAt: Date | null, now: Date): boolean {
+  if (!firstSessionAt || now.getTime() - firstSessionAt.getTime() < LEVEL_UP_AFTER_DAYS * DAY_MS) return false;
+  return !dismissedAt || now.getTime() - dismissedAt.getTime() >= LEVEL_UP_SNOOZE_DAYS * DAY_MS;
+}
+
 /** Rutinas del principiante: una por día con los ejercicios de su plantilla que estén en el catálogo. */
 export function generateBeginnerRoutines(trainingDays: Weekday[], catalog: CatalogExercise[]): GeneratedRoutine[] {
   const days = byWeekOrder(trainingDays);

@@ -213,6 +213,36 @@ export class RoutinesService {
     });
   }
 
+  /** Cambia las series de un ejercicio de la rutina (el usuario la arma a su gusto). */
+  async updateExercise(userId: string, id: string, exerciseId: string, sets: number) {
+    await this.routineExercise(userId, id, exerciseId);
+    return this.prisma.routineExercise.update({
+      where: { routineId_exerciseId: { routineId: id, exerciseId } },
+      data: { sets },
+      include: { exercise: true },
+    });
+  }
+
+  /** Saca un ejercicio de la rutina; los que siguen suben un lugar. Tiene que quedar al menos uno. */
+  async removeExercise(userId: string, id: string, exerciseId: string) {
+    const { routine, current } = await this.routineExercise(userId, id, exerciseId);
+    if (routine.exercises.length === 1) throw new ConflictException('La rutina tiene que tener al menos un ejercicio');
+    await this.prisma.$transaction([
+      this.prisma.routineExercise.delete({ where: { routineId_exerciseId: { routineId: id, exerciseId } } }),
+      this.prisma.routineExercise.updateMany({
+        where: { routineId: id, position: { gt: current.position } },
+        data: { position: { decrement: 1 } },
+      }),
+    ]);
+  }
+
+  private async routineExercise(userId: string, id: string, exerciseId: string) {
+    const routine = await this.prisma.routine.findFirst({ where: { id, userId }, include: { exercises: true } });
+    const current = routine?.exercises.find((e) => e.exerciseId === exerciseId);
+    if (!routine || !current) throw new NotFoundException('El ejercicio no está en la rutina');
+    return { routine, current };
+  }
+
   /**
    * Arma el entrenamiento del día: para cada ejercicio, su prescripción, el objetivo de hoy, la
    * anotación del usuario y lo que hizo la última vez que entrenó esta rutina (o, si el ejercicio

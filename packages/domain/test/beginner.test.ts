@@ -7,6 +7,7 @@ import {
   COMPOUND_MUSCLES,
   generateBeginnerRoutines,
   musclesWorked,
+  suggestLevelUp,
   type CatalogExercise,
 } from '../src';
 
@@ -48,6 +49,16 @@ describe('principiante', () => {
   it('la vista previa suma las series de cada día', () => {
     const plan = beginnerPlan(['fri', 'mon', 'wed']);
     expect(plan.days.map((d) => `${d.weekday}:${d.totalSets}`)).toEqual(['mon:18', 'wed:18', 'fri:18']);
+  });
+
+  it('a los 3 meses de su primera sesión se le sugiere pasar a intermedio; "ahora no" lo pospone un mes', () => {
+    const first = new Date(2026, 0, 1);
+    const at = (days: number) => new Date(first.getTime() + days * 86_400_000);
+    expect(suggestLevelUp(null, null, at(200))).toBe(false);
+    expect(suggestLevelUp(first, null, at(89))).toBe(false);
+    expect(suggestLevelUp(first, null, at(90))).toBe(true);
+    expect(suggestLevelUp(first, at(95), at(110))).toBe(false);
+    expect(suggestLevelUp(first, at(95), at(125))).toBe(true);
   });
 
   it('las rutinas usan los ejercicios del catálogo y saltean los que no estén', () => {

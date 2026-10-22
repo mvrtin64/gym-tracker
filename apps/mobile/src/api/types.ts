@@ -121,6 +121,8 @@ export interface ProfileDto {
   priorityMuscles: Muscle[];
   preferredRepMin: number | null;
   preferredRepMax: number | null;
+  /** Principiante con 3 meses entrenando: se le sugiere pasar a intermedio (§5.5). */
+  levelUpSuggested?: boolean;
 }
 
 /** Respuestas del onboarding. */
