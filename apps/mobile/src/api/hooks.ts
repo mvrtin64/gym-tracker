@@ -130,6 +130,34 @@ export function useReplaceExercise(routineId: string) {
   });
 }
 
+/** Cambia las series de un ejercicio en la rutina: queda guardado para las próximas veces. */
+export function useUpdateRoutineExercise(routineId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ exerciseId, sets }: { exerciseId: string; sets: number }) =>
+      api(`/routines/${routineId}/exercises/${exerciseId}`, { method: 'PATCH', body: { sets } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.routines }),
+  });
+}
+
+/** Saca un ejercicio de la rutina. */
+export function useRemoveRoutineExercise(routineId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (exerciseId: string) => api(`/routines/${routineId}/exercises/${exerciseId}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.routines }),
+  });
+}
+
+/** "Ahora no" a pasar a intermedio. */
+export function useDismissLevelUp() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api('/profile/level-up/dismiss', { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.profile }),
+  });
+}
+
 export function useLogSession() {
   const qc = useQueryClient();
   return useMutation({

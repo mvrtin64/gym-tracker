@@ -2,7 +2,28 @@ import { MIN_SETS_PER_SESSION, MUSCLE_REGION, MUSCLES, type Muscle, type Region 
 import { normalizeProfile, WEEKDAYS, type TrainingProfile, type Weekday } from '../training/profile';
 import type { WeeklyVolume } from '../volume/volume';
 
-export type DayKind = Region | 'full';
+export type DayKind = Region | 'full' | 'push' | 'pull' | 'legs';
+
+/** Músculos de empuje; el resto del tren superior es tirón y el tren inferior va en piernas. */
+const PUSH_MUSCLES: readonly Muscle[] = ['chest', 'front_delt', 'side_delt', 'triceps'];
+
+/** Si un tipo de día es para ese músculo. */
+export function dayTrains(kind: DayKind, muscle: Muscle): boolean {
+  const region = MUSCLE_REGION[muscle];
+  switch (kind) {
+    case 'full':
+      return true;
+    case 'upper':
+    case 'lower':
+      return region === kind;
+    case 'legs':
+      return region === 'lower';
+    case 'push':
+      return PUSH_MUSCLES.includes(muscle);
+    case 'pull':
+      return region === 'upper' && !PUSH_MUSCLES.includes(muscle);
+  }
+}
 
 export interface PlannedMuscle {
   muscle: Muscle;
@@ -57,14 +78,21 @@ export function priorityRegion(profile: TrainingProfile): Region | null {
 }
 
 /**
- * Tipo de cada día, en orden. Hasta 3 días sin prioridad (o 1–2 días siempre): cuerpo completo.
- * Si no, alterna inferior/superior empezando por el tren priorizado, que se queda con el día impar.
+ * Tipo de cada día, en orden (docs/dominio.md §3.2):
+ * - 1–3 días: cuerpo completo; los priorizados van más días que el resto.
+ * - 4: empuje, tirón, piernas y cuerpo completo. Cada tren tiene al menos dos días; con el inferior
+ *   priorizado, piernas va primero.
+ * - 5: empuje, tirón, piernas, superior e inferior.
+ * - 6: lo mismo más un día que se repite: cuerpo completo, o el del tren priorizado.
  */
 export function dayKinds(count: number, priority: Region | null): DayKind[] {
-  if (count <= 2 || (count === 3 && priority === null)) return Array<DayKind>(count).fill('full');
-  const first: Region = priority ?? 'lower';
-  const second: Region = first === 'lower' ? 'upper' : 'lower';
-  return Array.from({ length: count }, (_, i) => (i % 2 === 0 ? first : second));
+  if (count <= 3) return Array<DayKind>(count).fill('full');
+  if (count === 4) return priority === 'lower' ? ['legs', 'push', 'pull', 'full'] : ['push', 'pull', 'legs', 'full'];
+  if (count === 5) return ['push', 'pull', 'legs', 'upper', 'lower'];
+  // Con 6, los días del tren priorizado quedan intercalados.
+  if (priority === 'lower') return ['legs', 'push', 'lower', 'pull', 'legs', 'upper'];
+  if (priority === 'upper') return ['push', 'legs', 'pull', 'upper', 'lower', 'upper'];
+  return ['push', 'pull', 'legs', 'upper', 'lower', 'full'];
 }
 
 /** Divide `total` en `parts` lo más parejo posible; lo que sobra va a los primeros. */
@@ -83,6 +111,33 @@ export function splitIntoExercises(sets: number): number[] {
   return splitEvenly(sets, Math.min(MAX_EXERCISES_PER_MUSCLE, Math.ceil(sets / BASE_SETS_PER_EXERCISE)));
 }
 
+/**
+ * Ubica la división en los días elegidos: prueba la secuencia empezando por cada tipo de día (sin
+ * cambiar el orden) y se queda con la que menos músculos pone en días seguidos. Los priorizados
+ * pesan el doble. Si empatan, la secuencia original.
+ */
+export function alignKinds(days: Weekday[], kinds: DayKind[], priority: ReadonlySet<Muscle> = new Set()): DayKind[] {
+  let best = kinds;
+  let bestConflicts = Infinity;
+  for (let shift = 0; shift < kinds.length; shift++) {
+    const rotated = [...kinds.slice(shift), ...kinds.slice(0, shift)];
+    let conflicts = 0;
+    for (let a = 0; a < days.length; a++) {
+      for (let b = a + 1; b < days.length; b++) {
+        if (!areConsecutive(days[a], days[b])) continue;
+        for (const m of MUSCLES) {
+          if (dayTrains(rotated[a], m) && dayTrains(rotated[b], m)) conflicts += priority.has(m) ? 2 : 1;
+        }
+      }
+    }
+    if (conflicts < bestConflicts) {
+      best = rotated;
+      bestConflicts = conflicts;
+    }
+  }
+  return best;
+}
+
 function combinations(n: number, k: number): number[][] {
   const result: number[][] = [];
   const pick = (start: number, acc: number[]) => {
@@ -94,22 +149,25 @@ function combinations(n: number, k: number): number[][] {
 }
 
 /**
- * Elige `frequency` días para un músculo sin que haya dos seguidos. Prefiere los días de su tren
- * (o de cuerpo completo) y, entre esos, los que vienen más livianos. `null` si no hay forma.
+ * Elige `frequency` días para un músculo sin que haya dos seguidos. Prefiere los días que son para
+ * ese músculo (`dayTrains`) y, entre esos, los que vienen más livianos. Con `ownOnly` no usa otros
+ * días (nada de pecho el día de tirón). `null` si no hay forma.
  */
 function chooseDays(
   days: Weekday[],
   kinds: DayKind[],
-  region: Region,
+  muscle: Muscle,
   frequency: number,
   load: number[],
+  ownOnly: boolean,
 ): number[] | null {
   let best: number[] | null = null;
   let bestScore = -Infinity;
   for (const combo of combinations(days.length, frequency)) {
     const restOk = combo.every((a, i) => combo.slice(i + 1).every((b) => !areConsecutive(days[a], days[b])));
     if (!restOk) continue;
-    const own = combo.filter((i) => kinds[i] === region || kinds[i] === 'full').length;
+    const own = combo.filter((i) => dayTrains(kinds[i], muscle)).length;
+    if (ownOnly && own < combo.length) continue;
     const score = own * 1000 - combo.reduce((sum, i) => sum + load[i], 0);
     if (score > bestScore) {
       best = combo;
@@ -125,14 +183,16 @@ function chooseDays(
  * - Frecuencia 2; 3 para los músculos priorizados.
  * - Un mismo músculo nunca va en días seguidos: si no se puede, se baja la frecuencia y se
  *   mantiene el volumen semanal.
+ * - Cada músculo va en los días de su grupo; solo los priorizados pueden sumar un estímulo extra
+ *   en otro día.
  * - Si al repartir quedarían menos series por día que el mínimo, también se baja la frecuencia.
  * - Lo que sobra al dividir va al día de énfasis (el primero de su tren).
  */
 export function planWeek(profile: TrainingProfile, volume: WeeklyVolume): WeekPlan {
   const p = normalizeProfile(profile);
   const days = [...p.trainingDays].sort((a, b) => dayIndex(a) - dayIndex(b));
-  const kinds = dayKinds(days.length, priorityRegion(p));
   const priority = new Set(p.priorityMuscles);
+  const kinds = alignKinds(days, dayKinds(days.length, priorityRegion(p)), priority);
   const load = days.map(() => 0);
   const planned: PlannedMuscle[][] = days.map(() => []);
   const frequencyChanges: FrequencyChange[] = [];
@@ -144,9 +204,10 @@ export function planWeek(profile: TrainingProfile, volume: WeeklyVolume): WeekPl
 
   for (const muscle of order) {
     const weekly = volume[muscle];
-    const region = MUSCLE_REGION[muscle];
     const minPerSession = MIN_SETS_PER_SESSION[muscle] ?? MIN_SETS_PER_EXERCISE;
     const ideal = Math.min(priority.has(muscle) ? PRIORITY_FREQUENCY : BASE_FREQUENCY, days.length);
+    const ownOnly = !priority.has(muscle);
+    const ownDays = kinds.flatMap((kind, i) => (dayTrains(kind, muscle) ? [i] : []));
 
     let chosen: number[] | null = null;
     let reason = '';
@@ -155,17 +216,22 @@ export function planWeek(profile: TrainingProfile, volume: WeeklyVolume): WeekPl
         reason ||= `con ${weekly} series no llega al mínimo de ${minPerSession} por día`;
         continue;
       }
-      chosen = chooseDays(days, kinds, region, frequency, load);
+      chosen = chooseDays(days, kinds, muscle, frequency, load, ownOnly);
       if (chosen) break;
-      reason ||= 'con los días elegidos tendría que entrenarse en días seguidos';
+      reason ||=
+        ownOnly && ownDays.length < frequency
+          ? 'con los días elegidos no tiene más días de su grupo'
+          : 'con los días elegidos tendría que entrenarse en días seguidos';
     }
-    chosen ??= [0]; // con frecuencia 1 siempre hay un día posible
+    // Con frecuencia 1 siempre hay un día posible: todas las divisiones tienen un día para cada músculo.
+    chosen ??= [ownDays[0] ?? 0];
 
     if (chosen.length < ideal) frequencyChanges.push({ muscle, ideal, actual: chosen.length, reason });
 
-    // Día de énfasis: los de su tren primero, en orden de la semana.
+    // Día de énfasis: el de su grupo primero, después el de cuerpo completo (que junta a todos y no
+    // conviene cargarlo más) y por último los de otro grupo; en orden de la semana.
     const emphasis = [...chosen].sort((a, b) => {
-      const own = (i: number) => (kinds[i] === region || kinds[i] === 'full' ? 0 : 1);
+      const own = (i: number) => (!dayTrains(kinds[i], muscle) ? 2 : kinds[i] === 'full' ? 1 : 0);
       return own(a) - own(b) || a - b;
     });
     splitEvenly(weekly, emphasis.length).forEach((sets, i) => {

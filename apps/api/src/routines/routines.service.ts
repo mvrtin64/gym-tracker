@@ -1,5 +1,5 @@
 import {
-  DELOAD_WEEK, deloadWeight, generateRoutines, painWeight, planWeek, scaleSets, workingSets, type DayKind, type Weekday,
+  DELOAD_WEEK, deloadWeight, generateBeginnerRoutines, generateRoutines, painWeight, planWeek, scaleSets, workingSets, type DayKind, type Weekday,
 } from '@gym/domain';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { definedOnly } from '../common/objects';
@@ -17,7 +17,14 @@ import { CreateRoutineDto, RoutineExerciseDto } from './dto/create-routine.dto';
 const WEEKDAY_NAMES: Record<Weekday, string> = {
   mon: 'Lunes', tue: 'Martes', wed: 'Miércoles', thu: 'Jueves', fri: 'Viernes', sat: 'Sábado', sun: 'Domingo',
 };
-const DAY_KIND_NAMES: Record<DayKind, string> = { full: 'Cuerpo completo', upper: 'Tren superior', lower: 'Tren inferior' };
+const DAY_KIND_NAMES: Record<DayKind, string> = {
+  full: 'Cuerpo completo',
+  upper: 'Tren superior',
+  lower: 'Tren inferior',
+  push: 'Empuje',
+  pull: 'Tirón',
+  legs: 'Piernas',
+};
 
 const withExercises = (userId: string) =>
   ({
@@ -106,7 +113,11 @@ export class RoutinesService {
       this.prisma.exercise.findMany({ where: visibleTo(userId) }),
     ]);
     const byId = new Map(catalog.map((e) => [e.id, e]));
-    const generated = generateRoutines(planWeek(profile, volume), catalog);
+    // El principiante sigue sus días armados (§3.5); el resto, el reparto de su volumen (§3.4).
+    const generated =
+      profile.level === 'beginner'
+        ? generateBeginnerRoutines(profile.trainingDays, catalog)
+        : generateRoutines(planWeek(profile, volume), catalog);
 
     try {
       await this.prisma.$transaction(async (tx) => {
@@ -200,6 +211,36 @@ export class RoutinesService {
       data: { exerciseId: newExerciseId },
       include: { exercise: true },
     });
+  }
+
+  /** Cambia las series de un ejercicio de la rutina (el usuario la arma a su gusto). */
+  async updateExercise(userId: string, id: string, exerciseId: string, sets: number) {
+    await this.routineExercise(userId, id, exerciseId);
+    return this.prisma.routineExercise.update({
+      where: { routineId_exerciseId: { routineId: id, exerciseId } },
+      data: { sets },
+      include: { exercise: true },
+    });
+  }
+
+  /** Saca un ejercicio de la rutina; los que siguen suben un lugar. Tiene que quedar al menos uno. */
+  async removeExercise(userId: string, id: string, exerciseId: string) {
+    const { routine, current } = await this.routineExercise(userId, id, exerciseId);
+    if (routine.exercises.length === 1) throw new ConflictException('La rutina tiene que tener al menos un ejercicio');
+    await this.prisma.$transaction([
+      this.prisma.routineExercise.delete({ where: { routineId_exerciseId: { routineId: id, exerciseId } } }),
+      this.prisma.routineExercise.updateMany({
+        where: { routineId: id, position: { gt: current.position } },
+        data: { position: { decrement: 1 } },
+      }),
+    ]);
+  }
+
+  private async routineExercise(userId: string, id: string, exerciseId: string) {
+    const routine = await this.prisma.routine.findFirst({ where: { id, userId }, include: { exercises: true } });
+    const current = routine?.exercises.find((e) => e.exerciseId === exerciseId);
+    if (!routine || !current) throw new NotFoundException('El ejercicio no está en la rutina');
+    return { routine, current };
   }
 
   /**

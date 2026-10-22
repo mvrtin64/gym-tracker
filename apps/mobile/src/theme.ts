@@ -92,6 +92,9 @@ export const DAY_KIND_LABELS: Record<DayKind, string> = {
   upper: 'Tren superior',
   lower: 'Tren inferior',
   full: 'Cuerpo completo',
+  push: 'Empuje',
+  pull: 'Tirón',
+  legs: 'Piernas',
 };
 
 /** Escala de sensación del principiante (docs/dominio.md §6.2): corta para los chips, larga para explicarla. */

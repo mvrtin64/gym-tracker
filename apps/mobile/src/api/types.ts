@@ -121,6 +121,8 @@ export interface ProfileDto {
   priorityMuscles: Muscle[];
   preferredRepMin: number | null;
   preferredRepMax: number | null;
+  /** Principiante con 3 meses entrenando: se le sugiere pasar a intermedio (§5.5). */
+  levelUpSuggested?: boolean;
 }
 
 /** Respuestas del onboarding. */
@@ -170,6 +172,21 @@ export interface SessionReviewDto {
   deload: DeloadDto | null;
   /** Dolor articular: aviso, peso al que bajar o ejercicios para cambiarlo (§6.5). */
   jointPain: JointPainReviewDto[];
+  /** Lo que se le sumó al principiante que viene progresando (§5.4). */
+  growth: GrowthDto[];
+}
+
+/** +1 serie por semana para un músculo, y en qué día quedó. */
+export interface GrowthDto {
+  muscle: Muscle;
+  routineId: string;
+  routineName: string;
+  /** `add_set`: una serie más en `exerciseName`. `add_exercise`: entró `exerciseName` y `from` le pasó una serie. */
+  kind: 'add_set' | 'add_exercise';
+  exerciseName: string;
+  sets: number;
+  from?: { exerciseName: string; sets: number };
+  reason: string;
 }
 
 /** Ejercicio para cambiar uno de la rutina. */
