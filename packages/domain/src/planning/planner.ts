@@ -228,9 +228,10 @@ export function planWeek(profile: TrainingProfile, volume: WeeklyVolume): WeekPl
 
     if (chosen.length < ideal) frequencyChanges.push({ muscle, ideal, actual: chosen.length, reason });
 
-    // Día de énfasis: los que son para el músculo primero, en orden de la semana.
+    // Día de énfasis: el de su grupo primero, después el de cuerpo completo (que junta a todos y no
+    // conviene cargarlo más) y por último los de otro grupo; en orden de la semana.
     const emphasis = [...chosen].sort((a, b) => {
-      const own = (i: number) => (dayTrains(kinds[i], muscle) ? 0 : 1);
+      const own = (i: number) => (!dayTrains(kinds[i], muscle) ? 2 : kinds[i] === 'full' ? 1 : 0);
       return own(a) - own(b) || a - b;
     });
     splitEvenly(weekly, emphasis.length).forEach((sets, i) => {

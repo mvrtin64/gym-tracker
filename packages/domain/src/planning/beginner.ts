@@ -87,19 +87,22 @@ export const BEGINNER_DAYS: Record<BeginnerDay, TemplateExercise[]> = {
     ex('Elevación de talones de pie', 'calves', 3),
     ex('Crunch en polea', 'abs', 3),
   ],
+  // Superior: un press, un remo, un jalón, laterales, bíceps y tríceps.
   upper: [
     ex('Press inclinado con barra', 'chest', 4),
     ex('Remo sentado en polea', 'upper_back', 4),
-    ex('Press militar', 'front_delt', 3),
     ex('Jalón al pecho', 'lats', 3),
+    ex('Elevaciones laterales', 'side_delt', 3),
     ex('Curl con mancuernas', 'biceps', 3),
+    ex('Extensión de tríceps sobre la cabeza', 'triceps', 3),
   ],
+  // Inferior: uno de glúteo, uno de femoral, dos de cuádriceps y uno de gemelos.
   lower: [
     ex('Prensa', 'quads', 4),
     ex('Hip thrust', 'glutes', 4),
     ex('Curl femoral sentado', 'hamstrings', 3),
+    ex('Extensión de cuádriceps', 'quads', 3),
     ex('Elevación de talones sentado', 'calves', 3),
-    ex('Elevación de piernas colgado', 'abs', 3),
   ],
 };
 

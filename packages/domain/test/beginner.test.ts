@@ -25,7 +25,7 @@ describe('principiante', () => {
 
   it('cada día: pocos ejercicios de 3–4 series y como mucho un aislamiento por músculo', () => {
     for (const exercises of Object.values(BEGINNER_DAYS)) {
-      expect(exercises.length).toBeLessThanOrEqual(5);
+      expect(exercises.length).toBeLessThanOrEqual(6);
       for (const e of exercises) expect(e.sets).toBeGreaterThanOrEqual(3);
       for (const e of exercises) expect(e.sets).toBeLessThanOrEqual(4);
       const isolations = exercises.filter((e) => !(e.name in COMPOUND_MUSCLES)).map((e) => e.muscle);

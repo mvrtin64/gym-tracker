@@ -149,14 +149,16 @@ La división es la de §3.2 (siempre con enfoque general). Los días de cuerpo c
 | Empuje | Press inclinado con mancuernas 4 · Press militar 4 · Pec deck 3 · Elevaciones laterales 3 · Extensión de tríceps en polea 3 |
 | Tirón | Jalón al pecho 4 · Remo con barra 4 · Remo sentado en polea 3 · Face pull 3 · Curl con barra 3 |
 | Piernas | Sentadilla 4 · Peso muerto rumano 4 · Hip thrust 3 · Elevación de talones de pie 3 · Crunch en polea 3 |
-| Superior (5–6 días) | Press inclinado con barra 4 · Remo sentado en polea 4 · Press militar 3 · Jalón al pecho 3 · Curl con mancuernas 3 |
-| Inferior (5–6 días) | Prensa 4 · Hip thrust 4 · Curl femoral sentado 3 · Elevación de talones sentado 3 · Elevación de piernas colgado 3 |
+| Superior (5–6 días) | Press inclinado con barra 4 · Remo sentado en polea 4 · Jalón al pecho 3 · Elevaciones laterales 3 · Curl con mancuernas 3 · Extensión de tríceps sobre la cabeza 3 |
+| Inferior (5–6 días) | Prensa 4 · Hip thrust 4 · Curl femoral sentado 3 · Extensión de cuádriceps 3 · Elevación de talones sentado 3 |
 
-Superior e inferior los propuso la app (§7). Como en cualquier rutina generada, el usuario puede
-cambiar o sumar ejercicios.
+Superior: un press, un remo, un jalón, uno de laterales, uno de bíceps y uno de tríceps. Inferior: uno
+de glúteo, uno de femoral, dos de cuádriceps y uno de gemelos. Son la base: como en cualquier rutina
+generada, el usuario puede cambiar ejercicios o sumar series y ejercicios.
 
 **Cuando mejora**: a medida que se recupera mejor y progresa, se le suman series o ejercicios, o se
-pasa a una estructura de intermedio (§8).
+pasa a una estructura de intermedio. El parámetro es si **sesión a sesión va sumando peso y/o
+repeticiones** (§8).
 
 ## 4. Ejercicios
 
@@ -357,7 +359,8 @@ Detalles que las reglas no fijaban y se resolvieron en `packages/domain`. Son f�
 | 3 días con prioridad | Cuerpo completo igual: los priorizados van los 3 días y el resto 2 | `planning/planner.ts` |
 | 4 días con prioridad | Siempre empuje, tirón, piernas y cuerpo completo (cada tren tiene dos días); con el inferior priorizado, piernas va primero | `planning/planner.ts` |
 | Músculo fuera de su grupo | Nunca, salvo los priorizados, que pueden sumar el estímulo extra en otro día (como el glúteo en un día de tirón) | `planning/planner.ts` |
-| Días superior e inferior del principiante | Los ejercicios de la tabla de §3.5 | `planning/beginner.ts` |
+| Ejercicios concretos de superior e inferior del principiante | Los de la tabla de §3.5, dentro de lo que pidió el coach | `planning/beginner.ts` |
+| Series que sobran con cuerpo completo | Van primero al día del grupo del músculo y después al de cuerpo completo, que ya junta a todos. Igual puede quedar más cargado: el intermedio maneja su volumen y lo ajusta | `planning/planner.ts` |
 | Abdominales | Van con el tren inferior | `training/muscles.ts` |
 | Músculos chicos | Frecuencia 2 como el resto; la 3 queda para los priorizados | `planning/planner.ts` |
 | Series por ejercicio | 4 = 2 + 2; 7 = 3 + 2 + 2 | `planning/planner.ts` |
@@ -380,8 +383,6 @@ Detalles que las reglas no fijaban y se resolvieron en `packages/domain`. Son f�
   músculo (depende del catálogo).
   - **Principiante** (definido por el coach): ver §3.5.
   - **Intermedio / avanzado** (definido por el coach): ver §3.4.
-- **Progresión del principiante**: cuándo sumarle series o ejercicios, o pasarlo a otra estructura.
-  Por ahora sus rutinas no cambian solas: los ajustes de volumen no tocan sus días armados.
-- **Día de cuerpo completo con 4 días** (intermedio / avanzado): junta la segunda vez de todos los
-  músculos, así que puede quedar mucho más cargado que los otros (ej. 36 series contra 8–9 de
-  empuje o tirón con el volumen de la demo).
+- **Progresión del principiante**: el parámetro (definido por el coach) es si sesión a sesión va
+  sumando peso y/o repeticiones. Falta definir cuántas sesiones, cuánto se suma y cuándo pasa a otra
+  estructura. Por ahora sus rutinas no cambian solas.
