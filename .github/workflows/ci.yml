@@ -36,6 +36,7 @@ jobs:
       - run: pnpm --filter @gym/api db:generate
       - run: pnpm build:domain
       - run: pnpm typecheck
+      - run: pnpm lint
       - run: pnpm test
       - name: Tests de integración de la API
         run: pnpm --filter @gym/api test:e2e

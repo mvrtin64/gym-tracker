@@ -2,7 +2,7 @@ import {
   FOCUSES, LEVELS, MAX_TRAINING_DAYS, MUSCLES, muscleRecord, WEEKDAYS, type Focus, type Level, type Muscle, type Weekday,
 } from '@gym/domain';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useGenerateRoutines, useProfile, useSaveProfile } from '../api/hooks';
@@ -54,16 +54,18 @@ export default function OnboardingScreen() {
   const [volume, setVolume] = useState(() => muscleRecord(STARTING_REPORTED_SETS));
   const [step, setStep] = useState(0);
 
-  useEffect(() => {
-    const p = profile.data;
-    if (!p) return;
+  // Para editar, el formulario arranca con el perfil guardado (ajuste durante el render).
+  const [loaded, setLoaded] = useState<typeof profile.data>();
+  const p = profile.data;
+  if (p && p !== loaded) {
+    setLoaded(p);
     setLevel(params.level ?? p.level);
     setDays(p.trainingDays);
     setFocus(p.focus);
     setPriority(p.priorityMuscles);
     setRepMin(p.preferredRepMin?.toString() ?? '');
     setRepMax(p.preferredRepMax?.toString() ?? '');
-  }, [profile.data, params.level]);
+  }
 
   const experienced = level === 'intermediate' || level === 'advanced';
   const steps: StepId[] = [

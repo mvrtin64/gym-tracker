@@ -6,6 +6,7 @@
     "build:domain": "pnpm --filter @gym/domain build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
     "db:up": "docker compose up -d db",
     "db:down": "docker compose down",
     "api": "pnpm --filter @gym/api dev",
