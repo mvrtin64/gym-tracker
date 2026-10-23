@@ -83,22 +83,6 @@ export function selectExercises(
   return picked.map((e, i) => ({ exerciseId: e.id, muscle, sets: sets[i] }));
 }
 
-/**
- * Ejercicio que se suma cuando el principiante progresa con 4 series (§5.4): un analítico del mismo
- * músculo que no esté en la rutina, en el orden recomendado; si no hay, cualquiera que cuente para el
- * músculo. `null` si no queda ninguno.
- */
-export function growthExercise<T extends CatalogExercise>(muscle: Muscle, catalog: T[], exclude: Set<string>): T | null {
-  const recommended = (e: CatalogExercise) => {
-    const i = RECOMMENDED_EXERCISES[muscle].indexOf(e.name);
-    return i === -1 ? Infinity : i;
-  };
-  const isolationFirst = (e: CatalogExercise) => (e.type === 'isolation' ? 0 : 1);
-  const fits = catalog.filter((e) => e.targetMuscles.includes(muscle) && !exclude.has(e.id));
-  fits.sort((a, b) => isolationFirst(a) - isolationFirst(b) || recommended(a) - recommended(b) || a.name.localeCompare(b.name));
-  return fits[0] ?? null;
-}
-
 /** Una rutina por día del plan, con sus ejercicios elegidos (§3.4). Los días sin series no generan rutina. */
 export function generateRoutines(plan: WeekPlan, catalog: CatalogExercise[]): GeneratedRoutine[] {
   return plan.days

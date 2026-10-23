@@ -158,8 +158,8 @@ Superior: un press, un remo, un jalón, uno de laterales, uno de bíceps y uno d
 de glúteo, uno de femoral, dos de cuádriceps y uno de gemelos. Son la base: como en cualquier rutina
 generada, el usuario puede cambiar ejercicios o sumar series y ejercicios.
 
-**Cuando mejora**: a medida que se recupera mejor y progresa, se le suman series o ejercicios (§5.4),
-o se pasa a una estructura de intermedio (§5.5).
+**Cuando mejora**: progresa en peso y reps como cualquiera (§6.1); la rutina no se agranda sola
+(§5.4). Con el tiempo se le sugiere pasar a intermedio (§5.5).
 
 ## 4. Ejercicios
 
@@ -259,19 +259,14 @@ La app no suma series por su cuenta: subir volumen es decisión del usuario.
 La descarga de peso por ejercicio (§6.1) sigue funcionando aparte: es una corrección puntual de ese
 ejercicio, no de la semana.
 
-### 5.4 Cuándo crece el principiante ✅
+### 5.4 El principiante no suma series ✅
 
-Definido por el coach. El parámetro es si **sesión a sesión va sumando peso y/o repeticiones**:
+Definido por el coach: la **sobrecarga progresiva es subir el peso** (§6.1), no sumar series. Si
+cada vez que progresa se le agregan series o ejercicios, con el tiempo la rutina queda enorme.
 
-- Si un músculo lleva **dos sesiones seguidas progresando** y llega **cerca del fallo** (está llegando
-  sobrado: se recupera bien), sube su **volumen semanal: +1 serie**.
-- No se sube de golpe en una sesión: esa serie se **reparte en los ejercicios de la semana**. Va al
-  ejercicio del músculo con menos series.
-- Si todos sus ejercicios ya tienen **4 series**, se **suma otro ejercicio** que ataque el mismo
-  músculo, preferentemente un **analítico**.
-- Un principiante se va formando de forma constante en **3–6 meses** de entrenamiento.
-
-Detalles en §7. Es lo único en que la app suma volumen sola; para el resto, solo baja (§5.3).
+- La rutina base (§3.5) queda como está y progresa igual que la de cualquiera: reps y después peso.
+- El feedback puede **bajar** volumen si no se recupera (§5.3).
+- Si el usuario quiere, suma series o ejercicios a mano (§3.1).
 
 ### 5.5 Pasar a intermedio ✅
 
@@ -282,6 +277,13 @@ volumen. Es solo una sugerencia: si dice "ahora no", se le vuelve a ofrecer en u
 ## 6. Progresión y feedback
 
 ### 6.1 Doble progresión ✅
+
+Es la progresión principal, para todos los niveles (definido por el coach): con el peso fijo se van
+sumando reps dentro del rango que eligió el usuario; cuando **todas** las series llegan al límite
+superior, en la próxima sesión se sube el peso (lo mínimo: el incremento del ejercicio, 2.5 kg por
+defecto) y las reps vuelven a bajar. "Si llegó, llegó": no importa el esfuerzo con que llegó. En
+ejercicios chicos (ej. laterales) lo ideal es sumar reps, pero si se puede subir el peso con técnica
+impecable, se sube.
 
 `computeNextTarget()` mira la última sesión del ejercicio:
 
@@ -295,6 +297,8 @@ volumen. Es solo una sugerencia: si dice "ahora no", se le vuelve a ofrecer en u
 
 - Se sube el peso **solo si todas las series** llegan o pasan el máximo: si de tres series dos
   llegaron y la última no, **no se sube**.
+- Bajar el peso no es por estancarse: solo cuando, por fatiga, ni siquiera llega al mínimo de reps
+  (no debería pasar). Estancado dentro del rango, repite el peso hasta sumar reps.
 - Las series de calentamiento no cuentan. Los pesos se redondean al incremento (discos disponibles).
 
 ### 6.2 Feedback por serie 🔜
@@ -397,18 +401,8 @@ Detalles que las reglas no fijaban y se resolvieron en `packages/domain`. Son f�
 | Volver a generar | Reemplaza las rutinas generadas antes; las propias no se tocan | `apps/api/src/routines/routines.service.ts` |
 | Rango de reps y modo de las generadas | El rango por defecto del tipo de ejercicio; ajustes automáticos | `apps/api/src/routines/routines.service.ts` |
 | Agujetas y estancamiento a la vez | Se suman en un solo cambio de ese músculo, con el mismo máximo de −2 series | `apps/api/src/volume/adjustments.service.ts` |
-| "Cerca del fallo" para crecer | RIR promedio de 2 o menos en las dos sesiones ("al fallo" o "1-2 más"); sin RIR registrado no se suma | `volume/growth.ts` |
-| Qué cuenta como progresar | Lo mismo que la comparación con la última vez: más peso máximo, o más reps con el mismo peso | `progression/comparison.ts` |
-| Qué se evalúa | Cada músculo que entrenó en la sesión, con sus ejercicios de esa sesión (como el ajuste de §5.3) | `volume/growth.ts` |
-| Dónde va la serie | En sus rutinas automáticas de la semana: el ejercicio del músculo con menos series (menos de 4); si empatan, el del día más liviano | `volume/growth.ts` |
-| Ejercicio que se suma | Con todos en 4: un analítico del mismo músculo que no esté en esa rutina, en el orden recomendado (§3.4), en el día más liviano y justo después del de 4. Entra con 2 series: la nueva más una que le pasa el de 4, así la semana sube de a una. Si el de 4 es un multiarticular, los otros músculos que trabaja bajan esa serie | `volume/growth.ts`, `planning/selection.ts` |
-| Varios músculos a la vez | Cada uno suma su serie; si todos se entrenan el mismo día, ese día crece más | `apps/api/src/volume/adjustments.service.ts` |
-| Tope al sumar ejercicios | Nunca más de 3 ejercicios por músculo en una rutina | `apps/api/src/volume/adjustments.service.ts` |
-| Después de sumar | Se vuelve a contar desde cero: hacen falta otras dos sesiones progresando. Si en la misma sesión se bajó el volumen del músculo, no se suma | `apps/api/src/volume/adjustments.service.ts` |
-| Objetivo semanal al crecer | Sube con la rutina, contando para todos los músculos que trabaja lo que se sumó (§5.1) | `apps/api/src/volume/adjustments.service.ts` |
-| Rutinas en que crece | Solo las de modo automático (las que arma la app); las propias no se tocan | `apps/api/src/sessions/sessions.service.ts` |
 | Cambios a mano en la rutina | Cambiar series, sacar o sumar ejercicios no toca el objetivo semanal: la rutina es del usuario y el objetivo lo sigue ajustando el feedback. Tiene que quedar al menos un ejercicio | `apps/api/src/routines/routines.service.ts` |
-| Cuándo sugerir pasar a intermedio | A los 90 días de la primera sesión registrada; "ahora no" la pospone 30 días. Al pasar, el volumen que tenía se mantiene | `planning/beginner.ts` |
+| Cuándo sugerir pasar a intermedio | A los 90 días de la primera sesión registrada; "ahora no" la pospone 30 días (validado por el coach). Al pasar, el volumen y sus rutinas se mantienen y siguen progresando en peso y reps | `planning/beginner.ts` |
 
 ## 8. Pendientes ❓
 
@@ -416,5 +410,3 @@ Detalles que las reglas no fijaban y se resolvieron en `packages/domain`. Son f�
   músculo (depende del catálogo).
   - **Principiante** (definido por el coach): ver §3.5.
   - **Intermedio / avanzado** (definido por el coach): ver §3.4.
-- **Paso del principiante a otra estructura**: definido en §5.5; queda validar los 90 días y qué
-  pasa con sus rutinas automáticas al pasar (hoy siguen igual, pero ya no crecen solas).
