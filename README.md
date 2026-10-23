@@ -1,14 +1,33 @@
 # Gym Tracker
 
+[![CI](https://github.com/mvrtin64/gym-tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/mvrtin64/gym-tracker/actions/workflows/ci.yml)
+
 App móvil para registrar entrenamientos de fuerza que **calcula sola la sobrecarga progresiva**:
 después de cada sesión te dice con qué peso y cuántas repeticiones ir la próxima vez.
+
+Las reglas de entrenamiento las define un coach (el autor) y están documentadas en
+[`docs/dominio.md`](docs/dominio.md): onboarding por nivel, volumen semanal por músculo, rutinas
+armadas según los días disponibles, feedback de esfuerzo y de dolor por serie, y ajustes automáticos.
+
+## Qué hace
+
+- **Onboarding por nivel.** Al principiante la app le arma las rutinas (cuerpo completo o
+  empuje/tirón/piernas según los días); el intermedio/avanzado elige enfoque, rango y volumen.
+- **Entrenamiento del día.** Cada ejercicio muestra el objetivo de hoy y, serie por serie, lo que
+  hiciste la última vez, con el cambio en vivo.
+- **Sobrecarga progresiva.** Reps dentro del rango y, cuando todas las series llegan al tope, más peso.
+- **Feedback que ajusta.** Sensación o RPE por serie, dolor articular y agujetas: la app baja series,
+  propone una semana de descarga o sugiere cambiar un ejercicio que duele.
+- **La rutina es del usuario.** La app sugiere, pero se pueden cambiar series, quitar, sumar o
+  reemplazar ejercicios.
 
 | | |
 |---|---|
 | **Mobile** | React Native · Expo (SDK 57) · Expo Router · TanStack Query |
 | **API** | NestJS · Prisma 7 · PostgreSQL |
 | **Dominio** | TypeScript puro, compartido por app y API · Vitest |
-| **Infra** | pnpm workspaces · Docker Compose |
+| **Infra** | pnpm workspaces · Docker Compose · GitHub Actions |
+| **Calidad** | Tests unitarios del dominio (Vitest) · tests de integración de la API contra PostgreSQL (`node:test`) · ESLint |
 
 ## Arquitectura
 
@@ -60,8 +79,8 @@ Las series de calentamiento no cuentan. Los pesos se redondean al incremento (di
 | **Monoarticular** (`isolation`) | curl, extensiones, elevaciones | 3 × 10–15, +2 kg |
 
 Los multiarticulares son más demandantes (articular y cardiovascularmente), así que van con pocas reps.
-Cada ejercicio se puede ajustar a mano (`SCHEME_PRESETS` en `packages/domain`). Pendiente: individualizar
-la progresión por usuario (más peso o más series según la persona).
+Cada ejercicio se puede ajustar a mano (`SCHEME_PRESETS` en `packages/domain`). La app nunca suma
+series sola: la sobrecarga es subir el peso.
 
 ## Rutinas y comparación con la última vez
 
@@ -107,10 +126,20 @@ Para entrar con los datos de ejemplo: **demo@gymtracker.dev** / **demo1234** (o 
 - En la app el token se guarda cifrado con `expo-secure-store` (Keychain / Keystore). Las pantallas están
   protegidas con `Stack.Protected` de Expo Router; si la API responde 401 se cierra la sesión.
 
+
+## Tests y CI
+
 ```bash
-pnpm test        # tests del dominio
-pnpm typecheck   # todos los paquetes
+pnpm test                          # unitarios: dominio y API
+pnpm typecheck                     # todos los paquetes
+pnpm lint                          # ESLint de la app
+pnpm --filter @gym/api test:e2e    # integración: la API entera contra la base gym_tracker_test
 ```
+
+Los tests de integración levantan la app de Nest en un puerto libre, aplican las migraciones a una
+base aparte y prueban los flujos por HTTP: autenticación, rutinas del principiante, edición de rutinas,
+progresión y la sugerencia de nivel. Se compilan con `tsc` y corren con el runner de Node, porque Nest
+necesita la metadata de los decoradores. GitHub Actions corre todo en cada PR con un PostgreSQL de servicio.
 
 ## API
 
@@ -119,8 +148,9 @@ pnpm typecheck   # todos los paquetes
 | POST | `/auth/register` | Crea una cuenta (nombre, email, contraseña ≥ 8) y devuelve el token |
 | POST | `/auth/login` | Devuelve el token |
 | GET | `/auth/me` | Usuario de la sesión |
-| GET | `/profile` | Perfil de entrenamiento (respuestas del onboarding) |
+| GET | `/profile` | Perfil de entrenamiento (respuestas del onboarding) y si se sugiere pasar a intermedio |
 | PUT | `/profile` | Guarda el onboarding; la primera vez fija el **volumen inicial** por músculo |
+| POST | `/profile/level-up/dismiss` | "Ahora no" a pasar a intermedio (se vuelve a sugerir en un mes) |
 | GET | `/volume` | Series semanales objetivo vs. hechas esta semana, por músculo, sugerencias pendientes y descarga |
 | PUT | `/volume/:muscle` | Cambio manual del objetivo semanal (queda en el historial) |
 | POST | `/volume/changes/:id/accept` · `/dismiss` | Acepta o descarta una sugerencia de volumen |
@@ -136,17 +166,20 @@ pnpm typecheck   # todos los paquetes
 | GET | `/routines` | Rutinas con su prescripción y la fecha de la última vez |
 | POST | `/routines` | Crea una rutina: ejercicios en orden, enfoque, series y rango |
 | GET | `/routines/:id/workout` | **Entrenamiento del día**: objetivo, anotación y última vez por ejercicio (reducido si hay descarga; con menos peso si duele) |
-| POST | `/routines/generate` | **Arma las rutinas de la semana** desde el plan: 1 a 3 ejercicios por músculo, multiarticulares primero |
+| POST | `/routines/generate` | **Arma las rutinas de la semana**: al principiante, sus días base; al resto, desde el plan, 1 a 3 ejercicios por músculo, multiarticulares primero |
 | POST | `/routines/:id/exercises` | Suma un ejercicio a la rutina |
 | GET | `/routines/:id/exercises/:exerciseId/alternatives` | Ejercicios del mismo músculo para cambiar uno |
 | POST | `/routines/:id/exercises/:exerciseId/replace` | Cambia un ejercicio de la rutina por otro del mismo músculo (ej. porque duele) |
+| PATCH | `/routines/:id/exercises/:exerciseId` | Cambia las series de un ejercicio en la rutina (1–10) |
+| DELETE | `/routines/:id/exercises/:exerciseId` | Quita un ejercicio de la rutina (tiene que quedar al menos uno) |
 
 ## Roadmap
 
 - [x] Autenticación con email y contraseña (JWT)
 - [ ] Login con Google y recuperación de contraseña
 - [x] Rutinas (plantillas de sesión) con comparación contra la última vez
-- [ ] Progresión individualizada (subir peso o series según el usuario)
 - [ ] Gráficos de progreso (1RM estimado y volumen por semana)
 - [ ] Modo offline con cola de sincronización
-- [ ] Tests e2e de la API y CI en GitHub Actions
+- [x] Tests de integración de la API y CI en GitHub Actions
+- [ ] Capturas de pantalla en este README
+- [ ] Publicación en Play Store
