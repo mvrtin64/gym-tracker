@@ -1,6 +1,6 @@
 import { estimateOneRepMax, workingSets } from '@gym/domain';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Linking, Platform, ScrollView, Text, View } from 'react-native';
 import { useExercise, useHistory, useUpdateExerciseSettings } from '../../api/hooks';
 import type { HistoryItemDto } from '../../api/types';
@@ -18,11 +18,13 @@ export default function ExerciseScreen() {
   const [note, setNote] = useState('');
   const [increment, setIncrement] = useState('');
 
-  useEffect(() => {
-    if (!exercise.data) return;
+  // El formulario se carga con lo guardado cada vez que llegan datos nuevos (ajuste durante el render).
+  const [loaded, setLoaded] = useState<typeof exercise.data>();
+  if (exercise.data && exercise.data !== loaded) {
+    setLoaded(exercise.data);
     setNote(exercise.data.settings.note ?? '');
     setIncrement(String(exercise.data.settings.weightIncrementKg));
-  }, [exercise.data]);
+  }
 
   const save = () => {
     const weightIncrementKg = toNumber(increment);

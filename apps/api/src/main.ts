@@ -1,13 +1,8 @@
 import 'dotenv/config';
-import 'reflect-metadata';
-import { ValidationPipe } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
+import { createApp } from './app.factory';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  app.enableCors();
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  const app = await createApp();
   const port = Number(process.env.PORT ?? 3000);
   // 0.0.0.0 para que el celular lo alcance por la red local.
   await app.listen(port, '0.0.0.0');

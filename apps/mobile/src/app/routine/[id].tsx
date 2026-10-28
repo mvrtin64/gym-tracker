@@ -3,7 +3,7 @@ import {
   type Feel, type JointPain, type Muscle, type NextTarget, type PerformanceComparison, type SetLog, type Soreness,
 } from '@gym/domain';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import {
   useAddRoutineExercise, useAlternatives, useExercises, useLogSession, useProfile, useRemoveRoutineExercise,
@@ -94,13 +94,14 @@ export default function WorkoutScreen() {
   const [results, setResults] = useState<{ items: Result[]; review: SessionReviewDto } | null>(null);
   const beginner = profile.data?.level === 'beginner';
 
-  useEffect(() => {
-    // Al cambiar o agregar un ejercicio la rutina se recarga: lo ya cargado de los demás se conserva.
-    if (workout.data) {
-      const exercises = workout.data.exercises;
-      setRows((prev) => Object.fromEntries(exercises.map((x) => [x.exercise.id, prev[x.exercise.id] ?? rowsFrom(x.target)])));
-    }
-  }, [workout.data]);
+  // Al cambiar o agregar un ejercicio la rutina se recarga: lo ya cargado de los demás se conserva
+  // (ajuste durante el render, sin efecto).
+  const [loaded, setLoaded] = useState<typeof workout.data>();
+  if (workout.data && workout.data !== loaded) {
+    const exercises = workout.data.exercises;
+    setLoaded(workout.data);
+    setRows((prev) => Object.fromEntries(exercises.map((x) => [x.exercise.id, prev[x.exercise.id] ?? rowsFrom(x.target)])));
+  }
 
   const updateRow = (exerciseId: string, index: number, patch: Partial<Row>) =>
     setRows((all) => ({ ...all, [exerciseId]: all[exerciseId].map((r, i) => (i === index ? { ...r, ...patch } : r)) }));
@@ -367,8 +368,12 @@ function EditSheet({ routineId, item, onSwap, onSetsSaved, onClose }: {
 }) {
   const update = useUpdateRoutineExercise(routineId);
   const remove = useRemoveRoutineExercise(routineId);
-  const [sets, setSets] = useState(0);
-  useEffect(() => { if (item) setSets(item.prescription.sets); }, [item]);
+  const [sets, setSets] = useState(item?.prescription.sets ?? 0);
+  const [loaded, setLoaded] = useState(item);
+  if (item && item !== loaded) {
+    setLoaded(item);
+    setSets(item.prescription.sets);
+  }
   const busy = update.isPending || remove.isPending;
 
   const saveSets = () => {
