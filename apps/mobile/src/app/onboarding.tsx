@@ -227,7 +227,7 @@ export default function OnboardingScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }} keyboardShouldPersistTaps="handled">
         <View style={{ gap: spacing.sm }}>

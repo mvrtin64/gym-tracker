@@ -54,8 +54,8 @@ const toNumber = (s: string) => Number(s.replace(',', '.'));
 const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 const emptyRow = (weight: string, reps: string): Row => ({ weight, reps, feel: null, rpe: null, done: false });
 const rowsFrom = (t: NextTarget): Row[] => Array.from({ length: t.sets }, () => emptyRow(String(t.weightKg), String(t.reps)));
-const shortDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-const todayLabel = () => new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' });
+const shortDate = (iso: string) => new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+const todayLabel = () => new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'short' });
 
 const isValid = (r: Row) => {
   const w = toNumber(r.weight);

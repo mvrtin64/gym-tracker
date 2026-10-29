@@ -5,7 +5,7 @@ import type { DeloadDto, JointPainReviewDto, SessionReviewDto, VolumeChangeDto }
 import { colors, MUSCLE_LABELS, spacing } from '../theme';
 import { Button, Card, Chips, styles } from './ui';
 
-const shortDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+const shortDate = (iso: string) => new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
 const sets = (n: number) => `${n} ${n === 1 ? 'serie' : 'series'}`;
 
 /** Descarga propuesta (para aceptar o descartar) o en curso (con su fase). */
