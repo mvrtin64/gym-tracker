@@ -96,7 +96,7 @@ function HistoryRow({ item }: { item: HistoryItemDto }) {
     <Card style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
       <View style={{ gap: 2, flex: 1 }}>
         <Text style={styles.text}>
-          {new Date(item.performedAt).toLocaleDateString()} · {MUSCLE_LABELS[item.targetMuscle]}
+          {new Date(item.performedAt).toLocaleDateString('es-AR')} · {MUSCLE_LABELS[item.targetMuscle]}
         </Text>
         <Text style={styles.muted}>
           {sets.map((s) => `${s.weightKg}×${s.reps}${s.rir !== undefined ? ` (RIR ${s.rir})` : ''}`).join('  ')}

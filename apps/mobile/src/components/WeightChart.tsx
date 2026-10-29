@@ -9,7 +9,7 @@ const CHART_HEIGHT = 120;
 const MIN_BAR = 16;
 
 const kg = (n: number) => `${Number(n.toFixed(2))} kg`;
-const shortDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'numeric' });
+const shortDate = (iso: string) => new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric' });
 
 /** Evolución del peso de trabajo de un ejercicio, sesión a sesión (de la más vieja a la más nueva). */
 export function WeightChart({ history }: { history: HistoryItemDto[] }) {

@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../api/auth';
 import { colors } from '../theme';
 
@@ -21,6 +22,8 @@ export default function RootLayout() {
 /** Sin sesión solo se ve el login; con sesión, el resto de la app. */
 function RootStack() {
   const { session, loading } = useAuth();
+  // Android dibuja de borde a borde: sin esto, el final de cada pantalla queda bajo la barra de navegación.
+  const { bottom } = useSafeAreaInsets();
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg, justifyContent: 'center' }}>
@@ -35,13 +38,14 @@ function RootStack() {
         headerTintColor: colors.text,
         headerTitleStyle: { fontWeight: '800' },
         headerShadowVisible: false,
-        contentStyle: { backgroundColor: colors.bg },
+        contentStyle: { backgroundColor: colors.bg, paddingBottom: bottom },
       }}>
+      {/* El login y las pestañas ya se ocupan del borde de abajo (SafeAreaView y la barra de pestañas). */}
       <Stack.Protected guard={!session}>
-        <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="login" options={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
       </Stack.Protected>
       <Stack.Protected guard={!!session}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
         <Stack.Screen name="onboarding" options={{ title: 'Tu perfil' }} />
         <Stack.Screen name="routine/[id]" options={{ title: '' }} />
         <Stack.Screen name="exercise/[id]" options={{ title: '' }} />

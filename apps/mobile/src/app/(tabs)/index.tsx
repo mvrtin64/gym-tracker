@@ -12,7 +12,7 @@ import { RoutineCard } from './routines';
 
 /** Día de la semana de hoy con las claves del dominio (getDay: 0 = domingo). */
 const todayWeekday = (): Weekday => WEEKDAYS[(new Date().getDay() + 6) % 7];
-const longDate = () => new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+const longDate = () => new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
 
 export default function TodayScreen() {
   const profile = useProfile();

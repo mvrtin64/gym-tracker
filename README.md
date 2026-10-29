@@ -9,6 +9,29 @@ Las reglas de entrenamiento las define un coach (el autor) y están documentadas
 [`docs/dominio.md`](docs/dominio.md): onboarding por nivel, volumen semanal por músculo, rutinas
 armadas según los días disponibles, feedback de esfuerzo y de dolor por serie, y ajustes automáticos.
 
+<table>
+  <tr>
+    <td><img src="docs/screenshots/entrenamiento.jpg" width="220" alt="Entrenamiento: objetivo de peso y reps, y lo que hiciste la última vez"></td>
+    <td><img src="docs/screenshots/feedback.jpg" width="220" alt="Al terminar un músculo: comparación con la última vez y feedback de dolor"></td>
+    <td><img src="docs/screenshots/progreso.jpg" width="220" alt="Detalle de ejercicio: video de técnica, gráfico de peso de trabajo e historial"></td>
+  </tr>
+  <tr>
+    <td align="center">Entrenamiento del día</td>
+    <td align="center">Feedback al terminar</td>
+    <td align="center">Progreso por ejercicio</td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/hoy.jpg" width="220" alt="Hoy: rutina del día y series de la semana por músculo"></td>
+    <td><img src="docs/screenshots/rutinas.jpg" width="220" alt="Rutinas de la semana"></td>
+    <td><img src="docs/screenshots/perfil.jpg" width="220" alt="Perfil: nivel, días, enfoque y rango de repeticiones"></td>
+  </tr>
+  <tr>
+    <td align="center">Hoy y volumen semanal</td>
+    <td align="center">Rutinas</td>
+    <td align="center">Perfil</td>
+  </tr>
+</table>
+
 ## Qué hace
 
 - **Onboarding por nivel.** Al principiante la app le arma las rutinas (cuerpo completo o
@@ -18,6 +41,8 @@ armadas según los días disponibles, feedback de esfuerzo y de dolor por serie,
 - **Sobrecarga progresiva.** Reps dentro del rango y, cuando todas las series llegan al tope, más peso.
 - **Feedback que ajusta.** Sensación o RPE por serie, dolor articular y agujetas: la app baja series,
   propone una semana de descarga o sugiere cambiar un ejercicio que duele.
+- **Progreso y técnica.** Gráfico del peso de trabajo de cada ejercicio, sesión a sesión, y un video
+  corto de técnica elegido por el coach para cada ejercicio del catálogo.
 - **La rutina es del usuario.** La app sugiere, pero se pueden cambiar series, quitar, sumar o
   reemplazar ejercicios.
 
@@ -181,5 +206,5 @@ necesita la metadata de los decoradores. GitHub Actions corre todo en cada PR co
 - [x] Gráfico de progreso: peso de trabajo por ejercicio, sesión a sesión
 - [ ] Modo offline con cola de sincronización
 - [x] Tests de integración de la API y CI en GitHub Actions
-- [ ] Capturas de pantalla en este README
+- [x] Capturas de pantalla en este README
 - [ ] Publicación en Play Store
