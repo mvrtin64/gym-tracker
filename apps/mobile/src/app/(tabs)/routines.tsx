@@ -20,7 +20,7 @@ export default function RoutinesScreen() {
       {routines.data && (
         <ScrollView
           contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}
-          refreshControl={<RefreshControl refreshing={routines.isRefetching} onRefresh={routines.refetch} tintColor={colors.accent} />}>
+          refreshControl={<RefreshControl refreshing={routines.isRefetching} onRefresh={() => void routines.refetch()}tintColor={colors.accent} />}>
           {routines.data.length === 0 && <GenerateCard />}
           {routines.data.map((r) => <RoutineCard key={r.id} routine={r} />)}
           <Button title="+ Nueva rutina" variant="ghost" onPress={() => router.push('/new-routine')} />

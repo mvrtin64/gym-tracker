@@ -23,7 +23,7 @@ armadas según los días disponibles, feedback de esfuerzo y de dolor por serie,
 
 | | |
 |---|---|
-| **Mobile** | React Native · Expo (SDK 57) · Expo Router · TanStack Query |
+| **Mobile** | React Native · Expo (SDK 58) · Expo Router · TanStack Query |
 | **API** | NestJS · Prisma 7 · PostgreSQL |
 | **Dominio** | TypeScript puro, compartido por app y API · Vitest |
 | **Infra** | pnpm workspaces · Docker Compose · GitHub Actions |
