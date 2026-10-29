@@ -2,65 +2,67 @@
 
 [![CI](https://github.com/mvrtin64/gym-tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/mvrtin64/gym-tracker/actions/workflows/ci.yml)
 
-App móvil para registrar entrenamientos de fuerza que **calcula sola la sobrecarga progresiva**:
-después de cada sesión te dice con qué peso y cuántas repeticiones ir la próxima vez.
+A strength training mobile app that **handles progressive overload for you**: after every session it
+tells you what weight and how many reps to do next time.
 
-Las reglas de entrenamiento las define un coach (el autor) y están documentadas en
-[`docs/dominio.md`](docs/dominio.md): onboarding por nivel, volumen semanal por músculo, rutinas
-armadas según los días disponibles, feedback de esfuerzo y de dolor por serie, y ajustes automáticos.
+The training rules are defined by a gym coach (the author) and documented in
+[`docs/dominio.md`](docs/dominio.md) (in Spanish): level-based onboarding, weekly volume per muscle,
+routines built around the days you can train, effort and joint-pain feedback per set, and automatic
+adjustments. The app itself is in Spanish.
 
 <table>
   <tr>
-    <td><img src="docs/screenshots/entrenamiento.jpg" width="220" alt="Entrenamiento: objetivo de peso y reps, y lo que hiciste la última vez"></td>
-    <td><img src="docs/screenshots/feedback.jpg" width="220" alt="Al terminar un músculo: comparación con la última vez y feedback de dolor"></td>
-    <td><img src="docs/screenshots/progreso.jpg" width="220" alt="Detalle de ejercicio: video de técnica, gráfico de peso de trabajo e historial"></td>
+    <td><img src="docs/screenshots/entrenamiento.jpg" width="220" alt="Workout: weight and rep targets next to what you did last time"></td>
+    <td><img src="docs/screenshots/feedback.jpg" width="220" alt="After finishing a muscle: comparison with last time and joint-pain feedback"></td>
+    <td><img src="docs/screenshots/progreso.jpg" width="220" alt="Exercise detail: technique video, working-weight chart and history"></td>
   </tr>
   <tr>
-    <td align="center">Entrenamiento del día</td>
-    <td align="center">Feedback al terminar</td>
-    <td align="center">Progreso por ejercicio</td>
+    <td align="center">Today's workout</td>
+    <td align="center">Post-exercise feedback</td>
+    <td align="center">Progress per exercise</td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/hoy.jpg" width="220" alt="Hoy: rutina del día y series de la semana por músculo"></td>
-    <td><img src="docs/screenshots/rutinas.jpg" width="220" alt="Rutinas de la semana"></td>
-    <td><img src="docs/screenshots/perfil.jpg" width="220" alt="Perfil: nivel, días, enfoque y rango de repeticiones"></td>
+    <td><img src="docs/screenshots/hoy.jpg" width="220" alt="Today: the day's routine and weekly sets per muscle"></td>
+    <td><img src="docs/screenshots/rutinas.jpg" width="220" alt="Weekly routines"></td>
+    <td><img src="docs/screenshots/perfil.jpg" width="220" alt="Profile: level, training days, focus and rep range"></td>
   </tr>
   <tr>
-    <td align="center">Hoy y volumen semanal</td>
-    <td align="center">Rutinas</td>
-    <td align="center">Perfil</td>
+    <td align="center">Today and weekly volume</td>
+    <td align="center">Routines</td>
+    <td align="center">Profile</td>
   </tr>
 </table>
 
-## Qué hace
+## Features
 
-- **Onboarding por nivel.** Al principiante la app le arma las rutinas (cuerpo completo o
-  empuje/tirón/piernas según los días); el intermedio/avanzado elige enfoque, rango y volumen.
-- **Entrenamiento del día.** Cada ejercicio muestra el objetivo de hoy y, serie por serie, lo que
-  hiciste la última vez, con el cambio en vivo.
-- **Sobrecarga progresiva.** Reps dentro del rango y, cuando todas las series llegan al tope, más peso.
-- **Feedback que ajusta.** Sensación o RPE por serie, dolor articular y agujetas: la app baja series,
-  propone una semana de descarga o sugiere cambiar un ejercicio que duele.
-- **Progreso y técnica.** Gráfico del peso de trabajo de cada ejercicio, sesión a sesión, y un video
-  corto de técnica elegido por el coach para cada ejercicio del catálogo.
-- **La rutina es del usuario.** La app sugiere, pero se pueden cambiar series, quitar, sumar o
-  reemplazar ejercicios.
+- **Level-based onboarding.** Beginners get their routines built for them (full body or
+  push/pull/legs depending on the days); intermediate and advanced lifters choose their focus, rep
+  range and volume.
+- **Today's workout.** Every exercise shows today's target and, set by set, what you did last time,
+  with the difference updated live.
+- **Progressive overload.** Add reps within the range and, once every set hits the top, add weight.
+- **Feedback that adjusts the plan.** Feel or RPE per set, joint pain and soreness: the app reduces
+  sets, proposes a deload week or suggests swapping an exercise that hurts.
+- **Progress and technique.** A chart of each exercise's working weight, session by session, and a
+  short technique video picked by the coach for every exercise in the catalog.
+- **Users own their routine.** The app suggests, but sets can be changed and exercises removed,
+  added or replaced.
 
 | | |
 |---|---|
 | **Mobile** | React Native · Expo (SDK 58) · Expo Router · TanStack Query |
 | **API** | NestJS · Prisma 7 · PostgreSQL |
-| **Dominio** | TypeScript puro, compartido por app y API · Vitest |
+| **Domain** | Plain TypeScript, shared by the app and the API · Vitest |
 | **Infra** | pnpm workspaces · Docker Compose · GitHub Actions |
-| **Calidad** | Tests unitarios del dominio (Vitest) · tests de integración de la API contra PostgreSQL (`node:test`) · ESLint |
+| **Quality** | Domain unit tests (Vitest) · API integration tests against PostgreSQL (`node:test`) · ESLint |
 
-## Arquitectura
+## Architecture
 
 ```
 gym-tracker/
-├── packages/domain    Modelos de negocio + motor de progresión (sin dependencias de framework)
-├── apps/api           API REST: persistencia, validación, orquesta el dominio
-└── apps/mobile        App Expo: registra series y muestra el objetivo de la próxima sesión
+├── packages/domain    Business models + progression engine (no framework dependencies)
+├── apps/api           REST API: persistence, validation, orchestrates the domain
+└── apps/mobile        Expo app: logs sets and shows the next session's target
 ```
 
 ```mermaid
@@ -71,140 +73,144 @@ flowchart LR
   M --> D
 ```
 
-La regla de negocio central vive en `packages/domain` y no conoce ni a Nest ni a React Native.
-Así se testea aislada y la usan los dos lados: la API para calcular el objetivo y la app para
-mostrar el peso de trabajo y el volumen.
+The core business rules live in `packages/domain`, which knows nothing about Nest or React Native.
+That keeps them testable in isolation and shared by both sides: the API uses them to compute targets
+and the app to show working weight and volume.
 
-### Modelo de datos
+### Data model
 
-`User` 1─N `Exercise` (con sus reglas de progresión) · `User` 1─N `WorkoutSession` 1─N `ExerciseEntry` 1─N `SetEntry`
+`User` 1─N `Exercise` (with its progression settings) · `User` 1─N `WorkoutSession` 1─N `ExerciseEntry` 1─N `SetEntry`
 
-## Sobrecarga progresiva (doble progresión)
+## Progressive overload (double progression)
 
-> Todas las reglas de entrenamiento (onboarding, volumen semanal, feedback por serie) están en [`docs/dominio.md`](docs/dominio.md); cómo se guardan, en [`docs/modelo-datos.md`](docs/modelo-datos.md).
+> All training rules (onboarding, weekly volume, per-set feedback) are in [`docs/dominio.md`](docs/dominio.md); how they are stored, in [`docs/modelo-datos.md`](docs/modelo-datos.md) (both in Spanish).
 
-Cada ejercicio tiene series, un rango de repeticiones (ej. 8–12), un incremento de peso y una regla de descarga.
-`computeNextTarget()` mira el historial y decide:
+Each exercise has a number of sets, a rep range (e.g. 5–8), a weight increment and a deload rule.
+`computeNextTarget()` looks at the history and decides:
 
-| Situación en la última sesión | Decisión | Ejemplo (3×8–12, +2.5 kg) |
+| Last session | Decision | Example (3×5–8, +2.5 kg) |
 |---|---|---|
-| Sin historial | `start` | peso inicial × 8 |
-| Todas las series al máximo del rango | `increase_weight` | 3×12 @ 40 → **42.5 kg × 8** |
-| Dentro del rango | `increase_reps` | 10, 9, 9 @ 40 → **40 kg × 10** |
-| Alguna serie bajo el mínimo | `repeat` | 9, 8, 6 @ 40 → **40 kg × 8** |
-| N fallos seguidos con el mismo peso | `deload` | 2 fallos @ 60 → **55 kg** (−10%, redondeado a 2.5) |
+| No history | `start` | starting weight × 5 |
+| Every set at the top of the range | `increase_weight` | 3×8 @ 40 → **42.5 kg × 5** |
+| Within the range | `increase_reps` | 7, 6, 6 @ 40 → **40 kg × 7** |
+| A set below the minimum | `repeat` | 6, 5, 4 @ 40 → **40 kg × 5** |
+| N misses in a row at the same weight | `deload` | 2 misses @ 60 → **55 kg** (−10%, rounded to 2.5) |
 
-Las series de calentamiento no cuentan. Los pesos se redondean al incremento (discos disponibles).
+Warm-up sets don't count. Weights are rounded to the increment (available plates).
 
-### Rango según el tipo de ejercicio
+### Rep range by exercise type
 
-| Tipo | Ejemplos | Por defecto |
+| Type | Examples | Default |
 |---|---|---|
-| **Multiarticular** (`compound`) | sentadilla, press, remo | 3 × 5–8, +2.5 kg |
-| **Monoarticular** (`isolation`) | curl, extensiones, elevaciones | 3 × 10–15, +2 kg |
+| **Compound** | squat, press, row | 3 × 5–8, +2.5 kg |
+| **Isolation** | curl, extensions, raises | 3 × 10–15, +2 kg |
 
-Los multiarticulares son más demandantes (articular y cardiovascularmente), así que van con pocas reps.
-Cada ejercicio se puede ajustar a mano (`SCHEME_PRESETS` en `packages/domain`). La app nunca suma
-series sola: la sobrecarga es subir el peso.
+Compound lifts are more demanding (on the joints and the cardiovascular system), so they stay in a
+lower rep range. Every exercise can be adjusted by hand (`SCHEME_PRESETS` in `packages/domain`). The
+app never adds sets on its own: overload means adding weight.
 
-## Rutinas y comparación con la última vez
+## Routines and comparing with last time
 
-Una rutina es la plantilla de una sesión ("Empuje", "Pierna"…). Al entrenarla, cada ejercicio muestra el
-objetivo de hoy y, serie por serie, lo que hiciste **la última vez que hiciste esa rutina**, con el cambio en vivo
-(+2.5 kg, +1 rep, =). `comparePerformance()` decide si progresaste:
+A routine is a session template ("Push", "Legs"…). While training it, every exercise shows today's
+target and, set by set, what you did **the last time you did that routine**, with the live difference
+(+2.5 kg, +1 rep, =). `comparePerformance()` decides whether you progressed:
 
-| Respecto de la última vez | Resultado |
+| Compared with last time | Result |
 |---|---|
-| Subió el peso máximo | ↑ Progresaste |
-| Mismo peso, más reps en total | ↑ Progresaste |
-| Mismo peso y mismas reps | = Igual |
-| Menos peso, o mismo peso con menos reps | ↓ Por debajo |
+| Higher top weight | ↑ Progressed |
+| Same weight, more total reps | ↑ Progressed |
+| Same weight and same reps | = Same |
+| Less weight, or same weight with fewer reps | ↓ Below |
 
-Al terminar se muestra un resumen por ejercicio.
+A per-exercise summary is shown at the end.
 
-## Cómo correrlo
+## Running it
 
-Requisitos: Node 22+, pnpm, Docker y la app **Expo Go** en el celular (misma red Wi-Fi que la PC).
+Requirements: Node 22+, pnpm, Docker and the **Expo Go** app on your phone (on the same Wi-Fi network as
+your computer).
 
 ```bash
 pnpm install
 pnpm build:domain
-pnpm db:up                                   # PostgreSQL en Docker
-cp apps/api/.env.example apps/api/.env       # completá JWT_SECRET (el archivo explica cómo generarla)
+pnpm db:up                                   # PostgreSQL in Docker
+cp apps/api/.env.example apps/api/.env       # fill in JWT_SECRET (the file explains how to generate it)
 pnpm --filter @gym/api exec prisma migrate dev
 pnpm --filter @gym/api db:generate
-pnpm --filter @gym/api db:seed               # catálogo de ejercicios, usuario demo con perfil, 2 rutinas y una sesión pasada
+pnpm --filter @gym/api db:seed               # exercise catalog, demo user with profile, 2 routines and 6 weeks of history
 pnpm api                                     # http://localhost:3000
-pnpm mobile                                  # escaneá el QR con Expo Go
+pnpm mobile                                  # scan the QR code with Expo Go
 ```
 
-La app encuentra la API sola usando la IP de la PC; para otra URL definí `EXPO_PUBLIC_API_URL`.
-Para entrar con los datos de ejemplo: **demo@gymtracker.dev** / **demo1234** (o creá una cuenta nueva y pasás por el onboarding).
+The app finds the API on its own using your computer's IP; set `EXPO_PUBLIC_API_URL` to use another URL.
+To log in with the sample data: **demo@gymtracker.dev** / **demo1234** (or create a new account and go
+through onboarding).
 
-## Autenticación
+## Authentication
 
-- Email y contraseña. La contraseña se guarda con **scrypt** y sal aleatoria (`node:crypto`, sin dependencias nativas).
-- La API devuelve un **JWT** (30 días). Un guard global exige `Authorization: Bearer <token>` en todos los
-  endpoints salvo los marcados `@Public()` (registro y login); `@CurrentUserId()` toma el usuario del token.
-- Login fallido responde lo mismo exista o no el email, y verifica igual un hash de relleno para no
-  revelar cuentas por el tiempo de respuesta.
-- En la app el token se guarda cifrado con `expo-secure-store` (Keychain / Keystore). Las pantallas están
-  protegidas con `Stack.Protected` de Expo Router; si la API responde 401 se cierra la sesión.
+- Email and password. Passwords are stored with **scrypt** and a random salt (`node:crypto`, no native
+  dependencies).
+- The API returns a **JWT** (30 days). A global guard requires `Authorization: Bearer <token>` on every
+  endpoint except those marked `@Public()` (register and login); `@CurrentUserId()` reads the user from
+  the token.
+- A failed login gives the same response whether or not the email exists, and still checks a dummy hash
+  so response times don't reveal which accounts exist.
+- In the app the token is stored encrypted with `expo-secure-store` (Keychain / Keystore). Screens are
+  protected with Expo Router's `Stack.Protected`; a 401 from the API signs the user out.
 
-
-## Tests y CI
+## Tests and CI
 
 ```bash
-pnpm test                          # unitarios: dominio y API
-pnpm typecheck                     # todos los paquetes
-pnpm lint                          # ESLint de la app
-pnpm --filter @gym/api test:e2e    # integración: la API entera contra la base gym_tracker_test
+pnpm test                          # unit tests: domain and API
+pnpm typecheck                     # every package
+pnpm lint                          # ESLint for the app
+pnpm --filter @gym/api test:e2e    # integration: the whole API against the gym_tracker_test database
 ```
 
-Los tests de integración levantan la app de Nest en un puerto libre, aplican las migraciones a una
-base aparte y prueban los flujos por HTTP: autenticación, rutinas del principiante, edición de rutinas,
-progresión y la sugerencia de nivel. Se compilan con `tsc` y corren con el runner de Node, porque Nest
-necesita la metadata de los decoradores. GitHub Actions corre todo en cada PR con un PostgreSQL de servicio.
+The integration tests start the Nest app on a free port, apply the migrations to a separate database
+and exercise the flows over HTTP: authentication, beginner routines, routine editing, progression and
+the level-up suggestion. They are compiled with `tsc` and run with Node's test runner, because Nest
+needs decorator metadata. GitHub Actions runs everything on every PR against a PostgreSQL service.
 
 ## API
 
-| Método | Ruta | Descripción |
+| Method | Route | Description |
 |---|---|---|
-| POST | `/auth/register` | Crea una cuenta (nombre, email, contraseña ≥ 8) y devuelve el token |
-| POST | `/auth/login` | Devuelve el token |
-| GET | `/auth/me` | Usuario de la sesión |
-| GET | `/profile` | Perfil de entrenamiento (respuestas del onboarding) y si se sugiere pasar a intermedio |
-| PUT | `/profile` | Guarda el onboarding; la primera vez fija el **volumen inicial** por músculo |
-| POST | `/profile/level-up/dismiss` | "Ahora no" a pasar a intermedio (se vuelve a sugerir en un mes) |
-| GET | `/volume` | Series semanales objetivo vs. hechas esta semana, por músculo, sugerencias pendientes y descarga |
-| PUT | `/volume/:muscle` | Cambio manual del objetivo semanal (queda en el historial) |
-| POST | `/volume/changes/:id/accept` · `/dismiss` | Acepta o descarta una sugerencia de volumen |
-| POST | `/volume/deload/:id/start` · `/dismiss` | Arranca o descarta una semana de descarga propuesta |
-| GET | `/plan` | **Vista previa de la semana**: músculos y series de cada día |
-| GET | `/exercises` | Catálogo global + ejercicios propios, con la configuración del usuario |
-| POST | `/exercises` | Crea un ejercicio propio (tipo, músculos posibles, enfoque por defecto) |
-| GET | `/exercises/:id` | Detalle (incluye demo y tip del coach) |
-| PUT | `/exercises/:id/settings` | Anotación del usuario (ej. *"banco a 30°"*) e incremento de peso |
-| GET | `/exercises/:id/history` | Sesiones anteriores con sus series |
-| GET | `/sessions` | Últimas sesiones |
-| POST | `/sessions` | Registra una sesión (sensación o RPE → RIR por serie) con dolor articular y agujetas, y devuelve los **ajustes**: bajar series, apretar más, semana de descarga, bajar peso o cambiar un ejercicio que duele |
-| GET | `/routines` | Rutinas con su prescripción y la fecha de la última vez |
-| POST | `/routines` | Crea una rutina: ejercicios en orden, enfoque, series y rango |
-| GET | `/routines/:id/workout` | **Entrenamiento del día**: objetivo, anotación y última vez por ejercicio (reducido si hay descarga; con menos peso si duele) |
-| POST | `/routines/generate` | **Arma las rutinas de la semana**: al principiante, sus días base; al resto, desde el plan, 1 a 3 ejercicios por músculo, multiarticulares primero |
-| POST | `/routines/:id/exercises` | Suma un ejercicio a la rutina |
-| GET | `/routines/:id/exercises/:exerciseId/alternatives` | Ejercicios del mismo músculo para cambiar uno |
-| POST | `/routines/:id/exercises/:exerciseId/replace` | Cambia un ejercicio de la rutina por otro del mismo músculo (ej. porque duele) |
-| PATCH | `/routines/:id/exercises/:exerciseId` | Cambia las series de un ejercicio en la rutina (1–10) |
-| DELETE | `/routines/:id/exercises/:exerciseId` | Quita un ejercicio de la rutina (tiene que quedar al menos uno) |
+| POST | `/auth/register` | Creates an account (name, email, password ≥ 8) and returns the token |
+| POST | `/auth/login` | Returns the token |
+| GET | `/auth/me` | The signed-in user |
+| GET | `/profile` | Training profile (onboarding answers) and whether moving to intermediate is suggested |
+| PUT | `/profile` | Saves onboarding; the first time it sets the **starting volume** per muscle |
+| POST | `/profile/level-up/dismiss` | "Not now" to moving to intermediate (suggested again in a month) |
+| GET | `/volume` | Target vs. completed weekly sets per muscle, pending suggestions and deload |
+| PUT | `/volume/:muscle` | Manually changes the weekly target (kept in the history) |
+| POST | `/volume/changes/:id/accept` · `/dismiss` | Accepts or dismisses a volume suggestion |
+| POST | `/volume/deload/:id/start` · `/dismiss` | Starts or dismisses a proposed deload week |
+| GET | `/plan` | **Week preview**: muscles and sets for each day |
+| GET | `/exercises` | Global catalog + the user's own exercises, with the user's settings |
+| POST | `/exercises` | Creates a custom exercise (type, possible muscles, default focus) |
+| GET | `/exercises/:id` | Detail (includes the technique video and the coach's tip) |
+| PUT | `/exercises/:id/settings` | The user's note (e.g. *"bench at 30°"*) and weight increment |
+| GET | `/exercises/:id/history` | Previous sessions with their sets |
+| GET | `/sessions` | Latest sessions |
+| POST | `/sessions` | Logs a session (feel or RPE → RIR per set) with joint pain and soreness, and returns the **adjustments**: fewer sets, push harder, deload week, lower the weight or swap an exercise that hurts |
+| GET | `/routines` | Routines with their prescription and the date of the last session |
+| POST | `/routines` | Creates a routine: ordered exercises, focus, sets and range |
+| GET | `/routines/:id/workout` | **Today's workout**: target, note and last time for each exercise (reduced during a deload; lighter if it hurts) |
+| POST | `/routines/generate` | **Builds the week's routines**: beginners get their base days; everyone else gets them from the plan, 1 to 3 exercises per muscle, compounds first |
+| POST | `/routines/:id/exercises` | Adds an exercise to the routine |
+| GET | `/routines/:id/exercises/:exerciseId/alternatives` | Exercises for the same muscle, to swap one |
+| POST | `/routines/:id/exercises/:exerciseId/replace` | Swaps an exercise in the routine for another one for the same muscle (e.g. because it hurts) |
+| PATCH | `/routines/:id/exercises/:exerciseId` | Changes an exercise's sets in the routine (1–10) |
+| DELETE | `/routines/:id/exercises/:exerciseId` | Removes an exercise from the routine (at least one must remain) |
 
 ## Roadmap
 
-- [x] Autenticación con email y contraseña (JWT)
-- [ ] Login con Google y recuperación de contraseña
-- [x] Rutinas (plantillas de sesión) con comparación contra la última vez
-- [x] Gráfico de progreso: peso de trabajo por ejercicio, sesión a sesión
-- [ ] Modo offline con cola de sincronización
-- [x] Tests de integración de la API y CI en GitHub Actions
-- [x] Capturas de pantalla en este README
-- [ ] Publicación en Play Store
+- [x] Email and password authentication (JWT)
+- [ ] Google sign-in and password recovery
+- [x] Routines (session templates) compared against last time
+- [x] Progress chart: working weight per exercise, session by session
+- [ ] Offline mode with a sync queue
+- [x] API integration tests and CI on GitHub Actions
+- [x] Screenshots in this README
+- [ ] Hosted API, so the app works away from the local network
+- [ ] Private Android build (APK) to share with the people I coach
