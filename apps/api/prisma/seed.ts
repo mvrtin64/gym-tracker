@@ -83,6 +83,7 @@ const PRESS = yt('UgmYbrytasw');
 const FLY = yt('t3EH_o2GUyc');
 const LATERAL = yt('UQkdNBpjFDo');
 const LEG_CURL = yt('ENDnSAkatcw');
+const REAR_DELT = yt('CkIoZeOKfPw');
 const DEMOS: Record<string, string> = {
   'Press banca': PRESS,
   'Press inclinado con mancuernas': PRESS,
@@ -93,9 +94,11 @@ const DEMOS: Record<string, string> = {
   'Press militar': yt('UEzs_TIAOnk'),
   'Elevaciones laterales': LATERAL,
   'Elevaciones laterales en polea': LATERAL,
-  'Face pull': yt('CkIoZeOKfPw'),
+  'Face pull': REAR_DELT,
+  'Pájaros con mancuernas': REAR_DELT,
   'Dominadas': yt('MPbRERVWkbg'),
   'Jalón al pecho': yt('W2x6zP9k7SM'),
+  'Jalón unilateral en polea': yt('L3isMvyckQU'),
   'Remo con mancuerna a una mano': yt('N_KrUuUsg9k'),
   'Remo unilateral en polea': yt('x3I3kaT-674'),
   'Pullover en polea': yt('Vce6ta2xs9Q'),
