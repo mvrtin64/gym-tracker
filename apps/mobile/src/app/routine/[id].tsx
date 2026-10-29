@@ -529,8 +529,8 @@ function ExerciseBlock({ item, deloadWeek, rows, onUpdate, onToggle, onOpen, onA
           <MuscleTag muscle={targetMuscle} />
           <View style={{ flexDirection: 'row', gap: spacing.md }}>
             {exercise.demoUrl && (
-              <Pressable onPress={() => Linking.openURL(exercise.demoUrl!).catch(() => Alert.alert('No se pudo abrir la demostración'))}>
-                <Text style={{ color: colors.accent, fontWeight: '600' }}>▶ Demo</Text>
+              <Pressable onPress={() => Linking.openURL(exercise.demoUrl!).catch(() => Alert.alert('No se pudo abrir el video'))} hitSlop={8}>
+                <Text style={{ color: colors.accent, fontWeight: '600' }}>▶ Técnica</Text>
               </Pressable>
             )}
             <Pressable onPress={onEdit} hitSlop={8}>

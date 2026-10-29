@@ -24,7 +24,7 @@ interface CatalogItem {
 const c = (name: string, ...targets: Muscle[]): CatalogItem => ({ name, type: 'compound', targets });
 const i = (name: string, ...targets: Muscle[]): CatalogItem => ({ name, type: 'isolation', targets });
 
-/** Catálogo global inicial. Las demos y el resto de los tips los carga el coach. */
+/** Catálogo global inicial. El resto de los tips los carga el coach. */
 const CATALOG: CatalogItem[] = [
   // Pecho
   c('Press banca', 'chest'),
@@ -35,7 +35,6 @@ const CATALOG: CatalogItem[] = [
   i('Aperturas en polea', 'chest'),
   // Hombro
   c('Press militar', 'front_delt'),
-  i('Elevaciones frontales', 'front_delt'),
   i('Elevaciones laterales', 'side_delt'),
   i('Elevaciones laterales en polea', 'side_delt'),
   i('Face pull', 'rear_delt', 'upper_back'),
@@ -43,7 +42,10 @@ const CATALOG: CatalogItem[] = [
   // Espalda
   { ...c('Dominadas', 'lats'), coachTip: LATS_TIP },
   { ...c('Jalón al pecho', 'lats'), coachTip: LATS_TIP },
-  { ...c('Remo con mancuerna a una mano', 'lats', 'upper_back'), coachTip: LATS_TIP },
+  // Los unilaterales son para dorsal, con mancuerna o en polea.
+  { ...c('Remo con mancuerna a una mano', 'lats'), coachTip: LATS_TIP },
+  { ...c('Remo unilateral en polea', 'lats'), coachTip: LATS_TIP },
+  { ...c('Jalón unilateral en polea', 'lats'), coachTip: LATS_TIP },
   i('Pullover en polea', 'lats'),
   c('Remo con barra', 'upper_back', 'lats'),
   c('Remo sentado en polea', 'upper_back', 'lats'),
@@ -72,6 +74,58 @@ const CATALOG: CatalogItem[] = [
   i('Elevación de piernas colgado', 'abs'),
 ];
 
+/** Sacados del catálogo por el coach: las elevaciones frontales no aportan frente al press militar. */
+const RETIRED = ['Elevaciones frontales'];
+
+/** Videos de técnica elegidos por el coach. Un mismo video sirve para variantes con la misma técnica. */
+const yt = (id: string) => `https://www.youtube.com/shorts/${id}`;
+const PRESS = yt('UgmYbrytasw');
+const FLY = yt('t3EH_o2GUyc');
+const LATERAL = yt('UQkdNBpjFDo');
+const LEG_CURL = yt('ENDnSAkatcw');
+const REAR_DELT = yt('CkIoZeOKfPw');
+const DEMOS: Record<string, string> = {
+  'Press banca': PRESS,
+  'Press inclinado con mancuernas': PRESS,
+  'Press inclinado con barra': PRESS,
+  'Fondos en paralelas': yt('LbsqDJe4EFc'),
+  'Pec deck': FLY,
+  'Aperturas en polea': FLY,
+  'Press militar': yt('UEzs_TIAOnk'),
+  'Elevaciones laterales': LATERAL,
+  'Elevaciones laterales en polea': LATERAL,
+  'Face pull': REAR_DELT,
+  'Pájaros con mancuernas': REAR_DELT,
+  'Dominadas': yt('MPbRERVWkbg'),
+  'Jalón al pecho': yt('W2x6zP9k7SM'),
+  'Jalón unilateral en polea': yt('L3isMvyckQU'),
+  'Remo con mancuerna a una mano': yt('N_KrUuUsg9k'),
+  'Remo unilateral en polea': yt('x3I3kaT-674'),
+  'Pullover en polea': yt('Vce6ta2xs9Q'),
+  'Remo con barra': yt('sr_U0jBE89A'),
+  'Remo sentado en polea': yt('I3Wi6GK0QMk'),
+  'Curl con barra': yt('Rr4UZ-xYfzg'),
+  'Curl con mancuernas': yt('MKWBV29S6c0'),
+  'Curl martillo': yt('PzmSQcFSNPI'),
+  'Extensión de tríceps en polea': yt('vqq2NowgTrk'),
+  'Press francés': yt('jCI6_pObQfo'),
+  'Extensión de tríceps sobre la cabeza': yt('UvgO97CB_2M'),
+  'Sentadilla': yt('-kI7v2ts5d0'),
+  'Prensa': yt('CZrG20G5B1g'),
+  'Sentadilla búlgara': yt('QuKHDwIocyg'),
+  'Extensión de cuádriceps': yt('N-euKPQgO84'),
+  'Peso muerto rumano': yt('7_o_8AfKvTM'),
+  'Curl femoral acostado': LEG_CURL,
+  'Curl femoral sentado': LEG_CURL,
+  'Hip thrust': yt('_i6qpcI1Nw4'),
+  'Patada de glúteo en polea': yt('VptqezlMUJc'),
+  'Abducción de cadera en máquina': yt('HkT-b8oVoF4'),
+  'Elevación de talones de pie': yt('goHLe1fninw'),
+  'Elevación de talones sentado': yt('3ra-uyR1Aus'),
+  'Crunch en polea': yt('p-kdPTKDgNs'),
+  'Elevación de piernas colgado': yt('98oNxE56i3g'),
+};
+
 /** El ejemplo de docs/dominio.md: intermedio que prioriza glúteo, con poco volumen de tren superior. */
 const DEMO_VOLUME: Record<Muscle, number> = {
   front_delt: 6, side_delt: 6, rear_delt: 4, chest: 6, upper_back: 4, lats: 6, biceps: 4,
@@ -87,6 +141,7 @@ async function seedCatalog() {
       targetMuscles: item.targets,
       defaultTarget: item.targets[0],
       coachTip: item.coachTip ?? null,
+      demoUrl: DEMOS[item.name] ?? null,
     };
     // ownerId null no entra en un upsert por clave compuesta: se busca a mano.
     const existing = await prisma.exercise.findFirst({ where: { ownerId: null, name: item.name } });
@@ -95,6 +150,10 @@ async function seedCatalog() {
       : await prisma.exercise.create({ data });
     ids[item.name] = row.id;
   }
+  // Los que el coach sacó del catálogo se borran si nadie los usa (borrarlos en uso se llevaría el historial).
+  await prisma.exercise.deleteMany({
+    where: { ownerId: null, name: { in: RETIRED }, routines: { none: {} }, entries: { none: {} } },
+  });
   return ids;
 }
 

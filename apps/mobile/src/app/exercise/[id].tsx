@@ -39,7 +39,7 @@ export default function ExerciseScreen() {
   };
 
   const openDemo = (url: string) =>
-    Linking.openURL(url).catch(() => Alert.alert('No se pudo abrir', 'Revisá el link de la demostración.'));
+    Linking.openURL(url).catch(() => Alert.alert('No se pudo abrir', 'Revisá el link del video.'));
 
   const e = exercise.data;
   return (
@@ -59,7 +59,7 @@ export default function ExerciseScreen() {
               <Text style={styles.text}>{e.coachTip}</Text>
             </Card>
           )}
-          {e.demoUrl && <Button title="▶ Ver demostración" variant="ghost" onPress={() => openDemo(e.demoUrl!)} />}
+          {e.demoUrl && <Button title="▶ Ver técnica" variant="ghost" onPress={() => openDemo(e.demoUrl!)} />}
 
           <Card style={{ gap: spacing.md }}>
             <Text style={styles.title}>Tu anotación</Text>

@@ -61,7 +61,7 @@ export default function NewExerciseScreen() {
         </Section>
       )}
 
-      <Field label="Demostración (opcional)" value={demoUrl} onChangeText={setDemoUrl} placeholder="Link de YouTube o GIF" autoCapitalize="none" keyboardType="url" />
+      <Field label="Video de técnica (opcional)" value={demoUrl} onChangeText={setDemoUrl} placeholder="Link de YouTube o Instagram" autoCapitalize="none" keyboardType="url" />
       <Text style={styles.muted}>Solo lo vas a ver vos.</Text>
 
       <Button title={create.isPending ? 'Creando…' : 'Crear ejercicio'} onPress={submit} disabled={create.isPending} />

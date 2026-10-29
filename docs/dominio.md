@@ -121,10 +121,14 @@ arme:
 | Músculo | Multiarticular | Aislamiento |
 |---|---|---|
 | Pecho | Press inclinado con mancuernas · con barra | Pec deck · Aperturas en polea |
-| Hombro frontal | Press militar | Elevaciones frontales |
+| Hombro frontal | Press militar | — (las elevaciones frontales no aportan frente al press militar) |
 | Hombro lateral | — | Elevaciones laterales · en polea |
 | Hombro posterior | — | Pájaros · Face pull |
 | Dorsal | Jalón al pecho o dominadas · Remo a una mano | Pullover en polea |
+
+Los unilaterales (remo con mancuerna o en polea, jalón en polea) cuentan solo para **dorsal**.
+Cada ejercicio del catálogo tiene un **video corto de técnica** elegido por el coach; las variantes
+con la misma técnica comparten video.
 | Espalda alta | Remo con barra · Remo sentado en polea | Face pull |
 | Bíceps | — | Curl con barra · Curl con mancuernas · Curl martillo |
 | Tríceps | — | Extensión sobre la cabeza · Extensión en polea · Press francés |
