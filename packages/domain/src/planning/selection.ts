@@ -10,7 +10,7 @@ import { splitEvenly, type DayKind, type WeekPlan } from './planner';
 export const RECOMMENDED_EXERCISES: Record<Muscle, string[]> = {
   // Leve inclinación: pecho completo con énfasis en el superior.
   chest: ['Press inclinado con mancuernas', 'Press inclinado con barra', 'Pec deck', 'Aperturas en polea'],
-  front_delt: ['Press militar', 'Elevaciones frontales'],
+  front_delt: ['Press militar'],
   side_delt: ['Elevaciones laterales', 'Elevaciones laterales en polea'],
   rear_delt: ['Pájaros con mancuernas', 'Face pull'],
   lats: ['Jalón al pecho', 'Remo con mancuerna a una mano', 'Dominadas', 'Pullover en polea'],

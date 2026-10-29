@@ -35,7 +35,6 @@ const CATALOG: CatalogItem[] = [
   i('Aperturas en polea', 'chest'),
   // Hombro
   c('Press militar', 'front_delt'),
-  i('Elevaciones frontales', 'front_delt'),
   i('Elevaciones laterales', 'side_delt'),
   i('Elevaciones laterales en polea', 'side_delt'),
   i('Face pull', 'rear_delt', 'upper_back'),
@@ -43,7 +42,10 @@ const CATALOG: CatalogItem[] = [
   // Espalda
   { ...c('Dominadas', 'lats'), coachTip: LATS_TIP },
   { ...c('Jalón al pecho', 'lats'), coachTip: LATS_TIP },
-  { ...c('Remo con mancuerna a una mano', 'lats', 'upper_back'), coachTip: LATS_TIP },
+  // Los unilaterales son para dorsal, con mancuerna o en polea.
+  { ...c('Remo con mancuerna a una mano', 'lats'), coachTip: LATS_TIP },
+  { ...c('Remo unilateral en polea', 'lats'), coachTip: LATS_TIP },
+  { ...c('Jalón unilateral en polea', 'lats'), coachTip: LATS_TIP },
   i('Pullover en polea', 'lats'),
   c('Remo con barra', 'upper_back', 'lats'),
   c('Remo sentado en polea', 'upper_back', 'lats'),
@@ -72,6 +74,9 @@ const CATALOG: CatalogItem[] = [
   i('Elevación de piernas colgado', 'abs'),
 ];
 
+/** Sacados del catálogo por el coach: las elevaciones frontales no aportan frente al press militar. */
+const RETIRED = ['Elevaciones frontales'];
+
 /** Videos de técnica elegidos por el coach. Un mismo video sirve para variantes con la misma técnica. */
 const yt = (id: string) => `https://www.youtube.com/shorts/${id}`;
 const PRESS = yt('UgmYbrytasw');
@@ -92,8 +97,10 @@ const DEMOS: Record<string, string> = {
   'Dominadas': yt('MPbRERVWkbg'),
   'Jalón al pecho': yt('W2x6zP9k7SM'),
   'Remo con mancuerna a una mano': yt('N_KrUuUsg9k'),
+  'Remo unilateral en polea': yt('x3I3kaT-674'),
   'Pullover en polea': yt('Vce6ta2xs9Q'),
   'Remo con barra': yt('sr_U0jBE89A'),
+  'Remo sentado en polea': yt('I3Wi6GK0QMk'),
   'Curl con barra': yt('Rr4UZ-xYfzg'),
   'Curl con mancuernas': yt('MKWBV29S6c0'),
   'Curl martillo': yt('PzmSQcFSNPI'),
@@ -140,6 +147,10 @@ async function seedCatalog() {
       : await prisma.exercise.create({ data });
     ids[item.name] = row.id;
   }
+  // Los que el coach sacó del catálogo se borran si nadie los usa (borrarlos en uso se llevaría el historial).
+  await prisma.exercise.deleteMany({
+    where: { ownerId: null, name: { in: RETIRED }, routines: { none: {} }, entries: { none: {} } },
+  });
   return ids;
 }
 
