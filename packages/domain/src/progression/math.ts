@@ -21,3 +21,9 @@ export function totalVolume(sets: SetLog[]): number {
 export function workingSets(sets: SetLog[]): SetLog[] {
   return sets.filter((s) => !s.warmup);
 }
+
+/** Peso de trabajo de una sesión: el de la serie efectiva más pesada (undefined si no hubo series efectivas). */
+export function workingWeight(sets: SetLog[]): number | undefined {
+  const working = workingSets(sets);
+  return working.length ? Math.max(...working.map((s) => s.weightKg)) : undefined;
+}

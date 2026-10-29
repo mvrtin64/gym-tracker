@@ -48,7 +48,7 @@ flowchart LR
 
 La regla de negocio central vive en `packages/domain` y no conoce ni a Nest ni a React Native.
 Así se testea aislada y la usan los dos lados: la API para calcular el objetivo y la app para
-mostrar el 1RM estimado y el volumen.
+mostrar el peso de trabajo y el volumen.
 
 ### Modelo de datos
 
@@ -178,7 +178,7 @@ necesita la metadata de los decoradores. GitHub Actions corre todo en cada PR co
 - [x] Autenticación con email y contraseña (JWT)
 - [ ] Login con Google y recuperación de contraseña
 - [x] Rutinas (plantillas de sesión) con comparación contra la última vez
-- [ ] Gráficos de progreso (1RM estimado y volumen por semana)
+- [x] Gráfico de progreso: peso de trabajo por ejercicio, sesión a sesión
 - [ ] Modo offline con cola de sincronización
 - [x] Tests de integración de la API y CI en GitHub Actions
 - [ ] Capturas de pantalla en este README

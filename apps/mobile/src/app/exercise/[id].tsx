@@ -1,10 +1,11 @@
-import { estimateOneRepMax, workingSets } from '@gym/domain';
+import { workingSets, workingWeight } from '@gym/domain';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Linking, Platform, ScrollView, Text, View } from 'react-native';
 import { useExercise, useHistory, useUpdateExerciseSettings } from '../../api/hooks';
 import type { HistoryItemDto } from '../../api/types';
 import { Button, Card, Field, QueryState, styles } from '../../components/ui';
+import { WeightChart } from '../../components/WeightChart';
 import { colors, MUSCLE_LABELS, spacing, TYPE_LABELS } from '../../theme';
 
 const toNumber = (s: string) => Number(s.replace(',', '.'));
@@ -77,6 +78,7 @@ export default function ExerciseScreen() {
           </Card>
 
           <View style={{ gap: spacing.sm }}>
+            {history.data && <WeightChart history={history.data} />}
             <Text style={styles.title}>Historial</Text>
             {history.data?.length === 0 && <Text style={styles.muted}>Todavía no lo hiciste en ninguna sesión.</Text>}
             {history.data?.map((h) => <HistoryRow key={h.sessionId} item={h} />)}
@@ -89,7 +91,7 @@ export default function ExerciseScreen() {
 
 function HistoryRow({ item }: { item: HistoryItemDto }) {
   const sets = workingSets(item.sets);
-  const best = Math.max(0, ...sets.map((s) => estimateOneRepMax(s.weightKg, s.reps)));
+  const weight = workingWeight(item.sets);
   return (
     <Card style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
       <View style={{ gap: 2, flex: 1 }}>
@@ -101,8 +103,8 @@ function HistoryRow({ item }: { item: HistoryItemDto }) {
         </Text>
       </View>
       <View style={{ alignItems: 'flex-end' }}>
-        <Text style={styles.label}>1RM est.</Text>
-        <Text style={styles.text}>{best} kg</Text>
+        <Text style={styles.label}>Peso</Text>
+        <Text style={styles.text}>{weight ?? '—'} kg</Text>
       </View>
     </Card>
   );

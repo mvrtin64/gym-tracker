@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { estimateOneRepMax, roundToStep, totalVolume } from '../src';
+import { estimateOneRepMax, roundToStep, totalVolume, workingWeight } from '../src';
 
 describe('math', () => {
   it('redondea al paso de discos', () => {
@@ -14,5 +14,10 @@ describe('math', () => {
 
   it('suma volumen sin calentamientos', () => {
     expect(totalVolume([{ weightKg: 20, reps: 10, warmup: true }, { weightKg: 50, reps: 8 }, { weightKg: 50, reps: 6 }])).toBe(700);
+  });
+
+  it('el peso de trabajo es el de la serie efectiva más pesada', () => {
+    expect(workingWeight([{ weightKg: 60, reps: 3, warmup: true }, { weightKg: 50, reps: 8 }, { weightKg: 52.5, reps: 6 }])).toBe(52.5);
+    expect(workingWeight([{ weightKg: 20, reps: 10, warmup: true }])).toBeUndefined();
   });
 });
