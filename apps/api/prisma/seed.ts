@@ -217,29 +217,38 @@ async function main() {
     });
   }
 
-  // Una sesión de "Superior" de hace 3 días, para ver la comparación con la última vez.
+  // Seis semanas de "Superior" (la última hace 3 días): el gráfico de progreso y la comparación con la
+  // última vez. Sube el peso cuando todas las series llegan al tope (§6.1).
   const superior = await prisma.routine.findUniqueOrThrow({ where: { userId_name: { userId: DEMO_USER_ID, name: 'Superior' } } });
-  if ((await prisma.workoutSession.count({ where: { routineId: superior.id } })) === 0) {
-    const past: [string, Muscle, number, number[]][] = [
-      ['Press banca', 'chest', 60, [8, 7, 6]],
-      ['Jalón al pecho', 'lats', 50, [8, 8, 7]],
-      ['Elevaciones laterales', 'side_delt', 8, [15, 13, 12]],
-    ];
-    await prisma.workoutSession.create({
-      data: {
-        userId: DEMO_USER_ID,
-        routineId: superior.id,
-        performedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-        entries: {
-          create: past.map(([n, targetMuscle, weightKg, reps], position) => ({
-            exerciseId: ids[n],
-            position,
-            targetMuscle,
-            sets: { create: reps.map((r, j) => ({ weightKg, reps: r, rpe: 9, rir: 1, position: j })) },
-          })),
+  const past: [string, Muscle, [number, number[]][]][] = [
+    ['Press banca', 'chest', [[55, [7, 6, 6]], [55, [8, 8, 8]], [57.5, [7, 6, 6]], [57.5, [8, 8, 8]], [60, [7, 6, 6]], [60, [8, 7, 6]]]],
+    ['Jalón al pecho', 'lats', [[45, [8, 8, 8]], [47.5, [7, 7, 6]], [47.5, [8, 8, 8]], [50, [7, 6, 6]], [50, [8, 7, 7]], [50, [8, 8, 7]]]],
+    ['Elevaciones laterales', 'side_delt', [[6, [13, 12, 11]], [6, [15, 15, 15]], [8, [12, 11, 10]], [8, [13, 12, 11]], [8, [14, 13, 12]], [8, [15, 13, 12]]]],
+  ];
+  const weeks = past[0][2].length;
+  if ((await prisma.workoutSession.count({ where: { routineId: superior.id } })) < weeks) {
+    await prisma.workoutSession.deleteMany({ where: { routineId: superior.id } });
+    for (let w = 0; w < weeks; w++) {
+      const daysAgo = 3 + (weeks - 1 - w) * 7;
+      await prisma.workoutSession.create({
+        data: {
+          userId: DEMO_USER_ID,
+          routineId: superior.id,
+          performedAt: new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000),
+          entries: {
+            create: past.map(([n, targetMuscle, sessions], position) => {
+              const [weightKg, reps] = sessions[w];
+              return {
+                exerciseId: ids[n],
+                position,
+                targetMuscle,
+                sets: { create: reps.map((r, j) => ({ weightKg, reps: r, rpe: 9, rir: 1, position: j })) },
+              };
+            }),
+          },
         },
-      },
-    });
+      });
+    }
   }
   console.log(`Seed listo: ${CATALOG.length} ejercicios en el catálogo, usuario demo con perfil, volumen y ${Object.keys(routines).length} rutinas.`);
 }

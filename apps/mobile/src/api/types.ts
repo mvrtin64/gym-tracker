@@ -47,6 +47,7 @@ export type LoggedSet = SetLog & { feel?: Feel };
 export interface HistoryItemDto {
   sessionId: string;
   performedAt: string;
+  isDeload: boolean;
   targetMuscle: Muscle;
   sets: LoggedSet[];
 }
