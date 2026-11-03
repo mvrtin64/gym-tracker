@@ -1,6 +1,6 @@
 import type { Muscle } from '@gym/domain';
 import { SymbolView } from 'expo-symbols';
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View,
   type ColorValue, type TextInputProps, type ViewStyle,
@@ -259,8 +259,35 @@ export function ProgressBar({ done, target, color }: { done: number; target: num
 }
 
 /** Estado de carga o error de una query. Devuelve null si hay datos. */
+/**
+ * true si `active` lleva más de unos segundos. El servidor gratuito se duerme cuando nadie lo usa y
+ * la primera consulta tarda hasta un minuto: así se avisa en vez de parecer colgada.
+ */
+export function useSlow(active: boolean, ms = 5000): boolean {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (!active) return;
+    const t = setTimeout(() => setSlow(true), ms);
+    return () => {
+      clearTimeout(t);
+      setSlow(false);
+    };
+  }, [active, ms]);
+  return slow;
+}
+
+export const WAKING_UP = 'Despertando el servidor, puede tardar hasta un minuto…';
+
 export function QueryState({ isLoading, error, onRetry }: { isLoading: boolean; error: Error | null; onRetry: () => void }) {
-  if (isLoading) return <ActivityIndicator color={colors.accent} style={{ marginTop: spacing.xl }} />;
+  const slow = useSlow(isLoading);
+  if (isLoading) {
+    return (
+      <View style={{ marginTop: spacing.xl, gap: spacing.md, alignItems: 'center', paddingHorizontal: spacing.xl }}>
+        <ActivityIndicator color={colors.accent} />
+        {slow && <Text style={[styles.muted, { textAlign: 'center' }]}>{WAKING_UP}</Text>}
+      </View>
+    );
+  }
   if (!error) return null;
   return (
     <Card style={{ margin: spacing.lg, gap: spacing.md }}>

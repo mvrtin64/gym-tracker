@@ -53,7 +53,7 @@ adjustments. The app itself is in Spanish.
 | **Mobile** | React Native · Expo (SDK 58) · Expo Router · TanStack Query |
 | **API** | NestJS · Prisma 7 · PostgreSQL |
 | **Domain** | Plain TypeScript, shared by the app and the API · Vitest |
-| **Infra** | pnpm workspaces · Docker Compose · GitHub Actions |
+| **Infra** | pnpm workspaces · Docker Compose · GitHub Actions · Render + Neon (API and database) · EAS Build (Android APK) |
 | **Quality** | Domain unit tests (Vitest) · API integration tests against PostgreSQL (`node:test`) · ESLint |
 
 ## Architecture
@@ -145,6 +145,12 @@ The app finds the API on its own using your computer's IP; set `EXPO_PUBLIC_API_
 To log in with the sample data: **demo@gymtracker.dev** / **demo1234** (or create a new account and go
 through onboarding).
 
+### Deployment
+
+The API runs on Render's free plan (blueprint in [`render.yaml`](render.yaml)) with PostgreSQL on Neon, and
+the app is distributed as a private Android APK built with EAS. Step by step, in Spanish:
+[`docs/deploy.md`](docs/deploy.md).
+
 ## Authentication
 
 - Email and password. Passwords are stored with **scrypt** and a random salt (`node:crypto`, no native
@@ -175,6 +181,7 @@ needs decorator metadata. GitHub Actions runs everything on every PR against a P
 
 | Method | Route | Description |
 |---|---|---|
+| GET | `/health` | Health check, no auth (Render uses it; it also wakes the free instance) |
 | POST | `/auth/register` | Creates an account (name, email, password ≥ 8) and returns the token |
 | POST | `/auth/login` | Returns the token |
 | GET | `/auth/me` | The signed-in user |

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../api/auth';
-import { Button, Field, styles } from '../components/ui';
+import { Button, Field, styles, useSlow, WAKING_UP } from '../components/ui';
 import { colors, spacing } from '../theme';
 
 /** Ingreso y registro con email y contraseña. */
@@ -14,6 +14,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [pending, setPending] = useState(false);
   const register = mode === 'register';
+  const slow = useSlow(pending);
 
   const submit = async () => {
     if (!email.trim() || !password || (register && !name.trim())) {
@@ -65,6 +66,7 @@ export default function LoginScreen() {
             />
 
             <Button title={pending ? 'Un momento…' : register ? 'Crear cuenta' : 'Ingresar'} onPress={submit} disabled={pending} />
+            {slow && <Text style={[styles.muted, { textAlign: 'center' }]}>{WAKING_UP}</Text>}
             <Pressable onPress={() => setMode(register ? 'login' : 'register')} style={{ alignItems: 'center' }}>
               <Text style={{ color: colors.accent, paddingVertical: spacing.sm }}>
                 {register ? 'Ya tengo cuenta: ingresar' : '¿No tenés cuenta? Creala'}

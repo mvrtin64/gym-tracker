@@ -159,6 +159,11 @@ async function seedCatalog() {
 
 async function main() {
   const ids = await seedCatalog();
+  // En producción solo el catálogo: un usuario con contraseña conocida no tiene que existir ahí.
+  if (process.env.SEED_DEMO === 'false') {
+    console.log(`Seed listo: ${CATALOG.length} ejercicios en el catálogo (sin usuario demo).`);
+    return;
+  }
 
   const passwordHash = await hashPassword(DEMO_PASSWORD);
   await prisma.user.upsert({
