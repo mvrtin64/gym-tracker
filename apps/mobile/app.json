@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Gym Tracker",
-    "slug": "gym-tracker",
+    "slug": "gymtracker",
     "scheme": "gymtracker",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -25,6 +25,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "bc28dde5-f709-4d91-b3eb-81b30acf53c1"
+      }
+    },
+    "owner": "mvrtin1337s-team"
   }
 }
