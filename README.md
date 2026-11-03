@@ -155,8 +155,11 @@ the app is distributed as a private Android APK built with EAS. Step by step, in
 
 - Email and password. Passwords are stored with **scrypt** and a random salt (`node:crypto`, no native
   dependencies).
+- **Email verification**: a new account gets a 6-digit code by email (Brevo's HTTP API) and has no session
+  until it confirms it. Codes are stored hashed, expire in 15 minutes, allow 5 attempts and can be resent once
+  a minute.
 - The API returns a **JWT** (30 days). A global guard requires `Authorization: Bearer <token>` on every
-  endpoint except those marked `@Public()` (register and login); `@CurrentUserId()` reads the user from
+  endpoint except those marked `@Public()` (register, login, verify and resend); `@CurrentUserId()` reads the user from
   the token.
 - A failed login gives the same response whether or not the email exists, and still checks a dummy hash
   so response times don't reveal which accounts exist.
@@ -182,8 +185,10 @@ needs decorator metadata. GitHub Actions runs everything on every PR against a P
 | Method | Route | Description |
 |---|---|---|
 | GET | `/health` | Health check, no auth (Render uses it; it also wakes the free instance) |
-| POST | `/auth/register` | Creates an account (name, email, password ≥ 8) and returns the token |
-| POST | `/auth/login` | Returns the token |
+| POST | `/auth/register` | Creates an account (name, email, password ≥ 8) and emails a verification code |
+| POST | `/auth/login` | Returns the token (or sends a new code if the email isn't verified yet) |
+| POST | `/auth/verify` | Confirms the 6-digit code and returns the token |
+| POST | `/auth/resend` | Sends a new code (at most once a minute) |
 | GET | `/auth/me` | The signed-in user |
 | GET | `/profile` | Training profile (onboarding answers) and whether moving to intermediate is suggested |
 | PUT | `/profile` | Saves onboarding; the first time it sets the **starting volume** per muscle |

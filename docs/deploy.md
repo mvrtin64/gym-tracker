@@ -7,6 +7,7 @@ La app usa tres servicios gratuitos:
 | Base de datos | [Neon](https://neon.tech) | Postgres gratis que no vence. Región AWS us-east-1. |
 | API | [Render](https://render.com) | Plan gratuito. Se duerme tras 15 min sin uso; la primera consulta después tarda ~1 min y la app avisa "Despertando el servidor…". |
 | APK | [EAS Build](https://expo.dev/eas) | Compila el `.apk` en la nube con la URL de la API adentro. |
+| Mails | [Brevo](https://www.brevo.com) | Manda el código de verificación por su API HTTP: el plan gratuito de Render bloquea SMTP (puertos 25, 465 y 587). |
 
 ## 1. Base de datos (Neon)
 
@@ -25,7 +26,18 @@ La app usa tres servicios gratuitos:
 
 Cada push a `main` vuelve a desplegar la API.
 
-## 3. APK (EAS)
+## 3. Mails (Brevo)
+
+1. Crear cuenta en Brevo. En **Senders, Domains & Dedicated IPs → Senders**, agregar y verificar el mail
+   remitente (por ejemplo tu Gmail): llega un mail de confirmación.
+2. En **SMTP & API → API Keys**, generar una API key.
+3. En Render, **Environment** del servicio: `BREVO_API_KEY` = la key y `MAIL_FROM` = el remitente verificado.
+   Guardar redespliega la API.
+
+Sin `BREVO_API_KEY` la API no manda mails: escribe el código en el log (sirve para desarrollo local).
+Con remitente @gmail algunos mails pueden caer en spam; la app le dice al usuario que se fije ahí.
+
+## 4. APK (EAS)
 
 Desde `apps/mobile`, en una terminal propia (el login es interactivo):
 

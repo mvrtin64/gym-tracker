@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from './auth/auth.module';
 import { ExercisesModule } from './exercises/exercises.module';
 import { HealthController } from './health/health.controller';
+import { MailModule } from './mail/mail.module';
 import { PlanModule } from './plan/plan.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProfileModule } from './profile/profile.module';
@@ -13,6 +14,7 @@ import { VolumeModule } from './volume/volume.module';
 @Module({
   imports: [
     PrismaModule,
+    MailModule,
     AuthModule,
     ExercisesModule,
     SessionsModule,

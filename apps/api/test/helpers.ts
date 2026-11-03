@@ -1,6 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { after, before } from 'node:test';
 import { createApp } from '../src/app.factory';
+import { MailService } from '../src/mail/mail.service';
 import { PrismaService } from '../src/prisma/prisma.service';
 
 /** Los usuarios de los tests se reconocen por el email y se borran al terminar. */
@@ -41,12 +42,23 @@ export function useApi() {
     anon: client(),
     /** Con un token cualquiera (para probar tokens inválidos). */
     withToken: (token: string) => client(token),
-    /** Crea un usuario nuevo y devuelve un cliente con su sesión. */
+    /** Email nuevo para un usuario de test. */
+    newEmail: () => `${EMAIL_PREFIX}${Date.now()}-${Math.random().toString(36).slice(2, 8)}@test.dev`,
+    /** Último código de verificación "enviado" a ese email (sin Brevo, los mails quedan en `outbox`). */
+    lastCode(email: string): string {
+      const mail = ctx.app!.get(MailService).outbox.filter((m) => m.to === email).at(-1);
+      const code = mail?.text.match(/\b(\d{6})\b/)?.[1];
+      if (!code) throw new Error(`no hay código para ${email}`);
+      return code;
+    },
+    /** Crea un usuario nuevo, verifica el mail y devuelve un cliente con su sesión. */
     async user(): Promise<{ call: Call; email: string }> {
-      const email = `${EMAIL_PREFIX}${Date.now()}-${Math.random().toString(36).slice(2, 8)}@test.dev`;
+      const email = this.newEmail();
       const res = await client()('POST', '/auth/register', { email, password: 'prueba123', name: 'Test' });
       if (res.status !== 201) throw new Error(`registro: ${res.status} ${JSON.stringify(res.body)}`);
-      return { call: client(res.body.token), email };
+      const verified = await client()('POST', '/auth/verify', { email, code: this.lastCode(email) });
+      if (verified.status !== 200) throw new Error(`verificación: ${verified.status} ${JSON.stringify(verified.body)}`);
+      return { call: client(verified.body.token), email };
     },
   };
 }
