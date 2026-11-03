@@ -5,6 +5,12 @@ import { useApi } from './helpers';
 const api = useApi();
 
 describe('autenticación', () => {
+  it('/health responde sin sesión', async () => {
+    const res = await api.anon('GET', '/health');
+    assert.equal(res.status, 200);
+    assert.equal(res.body.ok, true);
+  });
+
   it('sin sesión no se puede usar la API', async () => {
     const res = await api.anon('GET', '/profile');
     assert.equal(res.status, 401);

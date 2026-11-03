@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from './auth/auth.module';
 import { ExercisesModule } from './exercises/exercises.module';
+import { HealthController } from './health/health.controller';
 import { PlanModule } from './plan/plan.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProfileModule } from './profile/profile.module';
@@ -21,5 +22,6 @@ import { VolumeModule } from './volume/volume.module';
     VolumeModule,
     PlanModule,
   ],
+  controllers: [HealthController],
 })
 export class AppModule {}
