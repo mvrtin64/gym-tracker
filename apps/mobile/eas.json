@@ -12,7 +12,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://gym-tracker-api.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://gym-tracker-api-0f9m.onrender.com"
       }
     }
   }
