@@ -14,12 +14,22 @@ interface Session {
   user: UserDto;
 }
 
+/** Registro y login sin el mail verificado: la API manda un código y todavía no hay sesión. */
+interface VerificationRequired {
+  verificationRequired: true;
+  email: string;
+}
+
 interface AuthContextValue {
   session: Session | null;
   /** Mientras se lee la sesión guardada al abrir la app. */
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (name: string, email: string, password: string) => Promise<void>;
+  /** Devuelven el email al que se mandó el código si falta verificarlo; si no, abren la sesión. */
+  signIn: (email: string, password: string) => Promise<string | null>;
+  signUp: (name: string, email: string, password: string) => Promise<string | null>;
+  /** Confirma el código de 6 dígitos y abre la sesión. */
+  verifyEmail: (email: string, code: string) => Promise<void>;
+  resendCode: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -63,16 +73,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => setUnauthorizedHandler(null);
   }, [signOut]);
 
-  const value = useMemo<AuthContextValue>(
-    () => ({
+  const value = useMemo<AuthContextValue>(() => {
+    const start = async (res: Session | VerificationRequired) => {
+      if ('verificationRequired' in res) return res.email;
+      await save(res);
+      return null;
+    };
+    return {
       session,
       loading,
       signIn: async (email, password) =>
-        save(await api<Session>('/auth/login', { method: 'POST', body: { email, password } })),
+        start(await api<Session | VerificationRequired>('/auth/login', { method: 'POST', body: { email, password } })),
       signUp: async (name, email, password) =>
-        save(await api<Session>('/auth/register', { method: 'POST', body: { name, email, password } })),
+        start(await api<Session | VerificationRequired>('/auth/register', { method: 'POST', body: { name, email, password } })),
+      verifyEmail: async (email, code) =>
+        save(await api<Session>('/auth/verify', { method: 'POST', body: { email, code } })),
+      resendCode: async (email) => {
+        await api('/auth/resend', { method: 'POST', body: { email } });
+      },
       signOut,
-    }),
+    };
+  },
     [session, loading, save, signOut],
   );
 

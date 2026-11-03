@@ -109,6 +109,13 @@ model User {
   passwordHash  String?
   name          String
   createdAt     DateTime         @default(now())
+  /// Null hasta que confirma el código que le llega por mail; sin verificar no hay sesión.
+  emailVerifiedAt       DateTime?
+  /// Código de verificación vigente (hash SHA-256), cuándo vence, intentos fallidos y último envío.
+  verificationCodeHash  String?
+  verificationExpiresAt DateTime?
+  verificationAttempts  Int       @default(0)
+  verificationSentAt    DateTime?
   profile       TrainingProfile?
   volumes       MuscleVolume[]
   volumeChanges VolumeChange[]

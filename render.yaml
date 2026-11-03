@@ -30,3 +30,8 @@ services:
       # Connection string de Neon (la directa, sin pooler). Se carga a mano en Render.
       - key: DATABASE_URL
         sync: false
+      # Mails de verificación por la API de Brevo (Render gratis bloquea SMTP). Se cargan a mano.
+      - key: BREVO_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false

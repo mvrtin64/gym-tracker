@@ -168,8 +168,8 @@ async function main() {
   const passwordHash = await hashPassword(DEMO_PASSWORD);
   await prisma.user.upsert({
     where: { id: DEMO_USER_ID },
-    update: { passwordHash },
-    create: { id: DEMO_USER_ID, email: 'demo@gymtracker.dev', name: 'Demo', passwordHash },
+    update: { passwordHash, emailVerifiedAt: new Date() },
+    create: { id: DEMO_USER_ID, email: 'demo@gymtracker.dev', name: 'Demo', passwordHash, emailVerifiedAt: new Date() },
   });
   await prisma.trainingProfile.upsert({
     where: { userId: DEMO_USER_ID },
